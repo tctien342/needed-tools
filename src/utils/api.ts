@@ -37,6 +37,11 @@ class APIQueueItem {
     ApiInstance = instance;
   };
 
+  /**
+   * Get current API queue manager instance
+   */
+  static getQueueInstance = () => ApiQueue;
+
   constructor(url: string) {
     this.url = url;
   }

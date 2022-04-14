@@ -1,6 +1,6 @@
 {
   "name": "@saintno/needed-tools",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Collection of needed tools for web project",
   "main": "build/index.js",
   "module": "build/index.es.js",

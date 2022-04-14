@@ -1,6 +1,6 @@
-# JS Need tools
+# JS Needed tools
 
-> Collection of saintno's usefull tools
+> Collection of saintno's useful tools
 
 ### Install this into your project
 

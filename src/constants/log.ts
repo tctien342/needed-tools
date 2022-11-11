@@ -7,7 +7,7 @@ const LOG_DEFAULT_CONF = {
   },
   TARGET_COLOR: '#0083e0',
   FUNCT_COLOR: '#6b4bcc',
-  MESS_COLOR: 'gray',
+  MESS_COLOR: '#cccccc',
 };
 
 export { LOG_DEFAULT_CONF };

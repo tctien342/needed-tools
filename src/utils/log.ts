@@ -2,7 +2,16 @@ import { LOG_DEFAULT_CONF } from '@constants/log';
 import chalk, { Chalk } from 'chalk';
 import { merge } from 'lodash';
 
+import { isBrowserless } from './browser';
+
 type TFallback = <T = {}>(data: { fnName: string; fnMessage: string; fnData: T }) => void;
+
+type TCustomLogFn = <T = unknown>(info: {
+  tag: keyof typeof LOG_DEFAULT_CONF.TAG;
+  fnName: string;
+  fnMessage: string;
+  fnData?: T;
+}) => void;
 
 /**
  * Simple log class for better log filter
@@ -12,6 +21,7 @@ class Logger {
   fallback: TFallback | null;
   activated: boolean;
   config = LOG_DEFAULT_CONF;
+  customRender?: TCustomLogFn;
 
   constructor(name: string, activated = true, config: Partial<typeof LOG_DEFAULT_CONF> = {}) {
     this.name = name;
@@ -27,10 +37,22 @@ class Logger {
     return this;
   }
 
+  // Override log function
+  setCustomLogFn(fn: TCustomLogFn) {
+    this.customRender = fn;
+  }
+
   /**
-   * Print with color in console
+   * Print with color in browser console
    */
-  private builder(background = 'transparent', color = '#000000', bold = false, text: string): string {
+  private browserBuilder(background = 'transparent', color = 'black', bold = false): string {
+    return `background: ${background}; color: ${color}; font-weight: ${bold ? 700 : 400}`;
+  }
+
+  /**
+   * Print with color in node console
+   */
+  private nodeBuilder(background = 'transparent', color = '#000000', bold = false, text: string): string {
     let builder = chalk as Chalk;
     if (color !== '#000000') {
       builder = builder.hex(color);
@@ -47,18 +69,37 @@ class Logger {
   /**
    * Print and info with custom color
    */
-  print(msg: string, opts?: { background: string; color: string; bold: boolean }): void {
-    console.log(this.builder(opts?.background, opts?.color, opts?.bold, msg));
+  print(msg: string, opts?: { background?: string; color?: string; bold?: boolean }): void {
+    if (isBrowserless) {
+      console.log(this.nodeBuilder(opts?.background, opts?.color, opts?.bold, msg));
+    } else {
+      console.log(`%c${msg}`, this.browserBuilder(opts?.background, opts?.color, opts?.bold));
+    }
   }
 
   private log<T = {}>(tag: keyof typeof LOG_DEFAULT_CONF.TAG, fnName: string, fnMessage: string, fnData?: T): void {
     if (this.activated) {
       const { color, label } = this.config.TAG[tag];
-      const bLabel = this.builder(color, '#ffffff', true, ` ${label} `);
-      const bName = this.builder('transparent', this.config.TARGET_COLOR, false, this.name);
-      const bFnName = this.builder('transparent', this.config.FUNCT_COLOR, true, fnName);
-      const bContext = this.builder('transparent', this.config.MESS_COLOR, false, fnMessage);
-      console.log(`${bLabel} #${bName} > ${bFnName}: ${bContext}`, fnData || '');
+      if (this.customRender) {
+        this.customRender<T>({ tag, fnName, fnMessage, fnData });
+      } else {
+        if (isBrowserless) {
+          const bLabel = this.nodeBuilder(color, '#ffffff', true, ` ${label} `);
+          const bName = this.nodeBuilder('transparent', this.config.TARGET_COLOR, false, this.name);
+          const bFnName = this.nodeBuilder('transparent', this.config.FUNCT_COLOR, true, fnName);
+          const bContext = this.nodeBuilder('transparent', this.config.MESS_COLOR, false, fnMessage);
+          console.log(`${bLabel} #${bName} > ${bFnName}: ${bContext}`, fnData || '');
+        } else {
+          console.log(
+            `<%c${label}%c #${this.name}> %c${fnName}: %c${fnMessage}`,
+            this.browserBuilder(color, 'white', true),
+            this.browserBuilder('transparent', this.config.TARGET_COLOR, false),
+            this.browserBuilder('transparent', this.config.FUNCT_COLOR, true),
+            this.browserBuilder('transparent', this.config.MESS_COLOR),
+            fnData || '',
+          );
+        }
+      }
     }
     if (tag === 'bug') {
       this.fallback?.({

@@ -2,7 +2,7 @@ import { LOG_DEFAULT_CONF } from '@constants/log';
 import chalk, { Chalk } from 'chalk';
 import { merge } from 'lodash';
 
-import { isBrowserless } from './browser';
+import { Browser } from './browser';
 
 type TFallback = <T = {}>(data: { fnName: string; fnMessage: string; fnData: T }) => void;
 
@@ -22,6 +22,7 @@ class Logger {
   activated: boolean;
   config = LOG_DEFAULT_CONF;
   customRender?: TCustomLogFn;
+  isBrowser = Browser.get().isBrowser();
 
   constructor(name: string, activated = true, config: Partial<typeof LOG_DEFAULT_CONF> = {}) {
     this.name = name;
@@ -42,38 +43,33 @@ class Logger {
     this.customRender = fn;
   }
 
-  /**
-   * Print with color in browser console
-   */
-  private browserBuilder(background = 'transparent', color = 'black', bold = false): string {
-    return `background: ${background}; color: ${color}; font-weight: ${bold ? 700 : 400}`;
-  }
-
-  /**
-   * Print with color in node console
-   */
-  private nodeBuilder(background = 'transparent', color = '#000000', bold = false, text: string): string {
-    let builder = chalk as Chalk;
-    if (color !== '#000000') {
-      builder = builder.hex(color);
+  private builder(text: string, background = 'transparent', color = 'black', bold = false) {
+    if (this.isBrowser) {
+      return [text, `background: ${background}; color: ${color}; font-weight: ${bold ? 700 : 400}`];
+    } else {
+      let builder = chalk as Chalk;
+      if (color !== '#000000') {
+        builder = builder.hex(color);
+      }
+      if (background !== 'transparent') {
+        builder = builder.bgHex(background);
+      }
+      if (bold) {
+        return [builder.bold(text)];
+      }
+      return [builder(text)];
     }
-    if (background !== 'transparent') {
-      builder = builder.bgHex(background);
-    }
-    if (bold) {
-      return builder.bold(text);
-    }
-    return builder(text);
   }
 
   /**
    * Print and info with custom color
    */
   print(msg: string, opts?: { background?: string; color?: string; bold?: boolean }): void {
-    if (isBrowserless) {
-      console.log(this.nodeBuilder(opts?.background, opts?.color, opts?.bold, msg));
+    const built = this.builder(msg, opts?.background, opts?.color, opts?.bold);
+    if (this.isBrowser) {
+      console.log(`%c${built[0]}`, built[1]);
     } else {
-      console.log(`%c${msg}`, this.browserBuilder(opts?.background, opts?.color, opts?.bold));
+      console.log(built[0]);
     }
   }
 
@@ -83,21 +79,21 @@ class Logger {
       if (this.customRender) {
         this.customRender<T>({ tag, fnName, fnMessage, fnData });
       } else {
-        if (isBrowserless) {
-          const bLabel = this.nodeBuilder(color, '#ffffff', true, ` ${label} `);
-          const bName = this.nodeBuilder('transparent', this.config.TARGET_COLOR, false, this.name);
-          const bFnName = this.nodeBuilder('transparent', this.config.FUNCT_COLOR, true, fnName);
-          const bContext = this.nodeBuilder('transparent', this.config.MESS_COLOR, false, fnMessage);
-          console.log(`${bLabel} #${bName} > ${bFnName}: ${bContext}`, fnData || '');
-        } else {
+        const bLabel = this.builder(` ${label} `, color, '#ffffff', true);
+        const bName = this.builder(this.name, 'transparent', this.config.TARGET_COLOR, false);
+        const bFnName = this.builder(fnName, 'transparent', this.config.FUNCT_COLOR, true);
+        const bContext = this.builder(fnMessage, 'transparent', this.config.MESS_COLOR, false);
+        if (this.isBrowser) {
           console.log(
-            `<%c${label}%c #${this.name}> %c${fnName}: %c${fnMessage}`,
-            this.browserBuilder(color, 'white', true),
-            this.browserBuilder('transparent', this.config.TARGET_COLOR, false),
-            this.browserBuilder('transparent', this.config.FUNCT_COLOR, true),
-            this.browserBuilder('transparent', this.config.MESS_COLOR),
+            `<%c${bLabel[0]}%c #${bName[0]}> %c${bFnName[0]}: %c${bContext[0]}`,
+            bLabel[1],
+            bName[1],
+            bFnName[1],
+            bContext[1],
             fnData || '',
           );
+        } else {
+          console.log(`${bLabel[0]} #${bName[0]} > ${bFnName[0]}: ${bContext[0]}`, fnData || '');
         }
       }
     }

@@ -1,72 +1,98 @@
-/* eslint-disable */
-/* tslint-disable */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * This file include detection for all popular browser
  */
-declare var opr: any;
-declare var InstallTrigger: any;
 
-let isOpera = false;
-let isSafari = false;
-let isChrome = false;
-let isIE = false;
-let isFirefox = false;
-let isEdge = false;
-let isBlink = false;
-let isMobile = false;
-let isTouchScreen = false;
-let isDarkMode = false;
-if (typeof window !== undefined) {
-  // Opera 8.0+
-  isOpera =
-    (!!(window as any).opr && !!opr.addons) || !!(window as any).opera || navigator.userAgent.indexOf(' OPR/') >= 0;
+declare let opr: any;
+declare let InstallTrigger: any;
 
-  // Firefox 1.0+
-  isFirefox = typeof InstallTrigger !== 'undefined';
-
-  // Safari 3.0+ "[object HTMLElementConstructor]
-  isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-  // Internet Explorer 6-11
-  isIE = /*@cc_on!@*/ false || !!(document as any).documentMode;
-
-  // Edge 20+
-  isEdge = !isIE && !!(window as any).StyleMedia;
-
-  // Chrome 1 - 71
-  isChrome = !!(window as any).chrome && (!!(window as any).chrome.webstore || !!(window as any).chrome.runtime);
-
-  // Blink engine detection
-  isBlink = (isChrome || isOpera) && !!(window as any).CSS;
-
-  // Check is is using mobile
-  let ua = '';
-  if (globalThis.navigator) ua = globalThis.navigator.userAgent;
-  if (ua) {
-    isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua.toLowerCase());
+class Browser {
+  static instance: Browser;
+  private constructor() {
+    return;
   }
 
-  if (typeof matchMedia === 'function') {
-    // Check touch screen
-    isTouchScreen = matchMedia?.('(hover: none), (pointer: coarse)').matches;
-    // Check is darkmode
-    isDarkMode = matchMedia?.('(prefers-color-scheme: dark)').matches;
+  static get() {
+    if (!this.instance) {
+      this.instance = new Browser();
+    }
+    return this.instance;
+  }
+
+  execute(cb: () => boolean) {
+    if (typeof (window as any) !== 'undefined' && typeof (matchMedia as any) === 'function') {
+      return cb();
+    }
+    return false;
+  }
+
+  isMobile() {
+    return this.execute(() => {
+      if (globalThis.navigator) {
+        const ua = globalThis.navigator.userAgent;
+        return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua.toLowerCase());
+      }
+      return false;
+    });
+  }
+
+  isOpera() {
+    return this.execute(
+      () =>
+        (!!(window as any).opr && !!opr.addons) || !!(window as any).opera || navigator.userAgent.indexOf(' opr/') >= 0,
+    );
+  }
+
+  isSafari() {
+    return this.execute(() => /^((?!chrome|android).)*safari/i.test(navigator.userAgent));
+  }
+
+  isChrome() {
+    return this.execute(
+      () => !!(window as any).chrome && (!!(window as any).chrome.webstore || !!(window as any).chrome.runtime),
+    );
+  }
+
+  isIE() {
+    return this.execute(() => false || !!(document as any).documentMode);
+  }
+
+  isEdge() {
+    return this.execute(() => !isIE && !!(window as any).StyleMedia);
+  }
+
+  isFirefox() {
+    return this.execute(() => typeof InstallTrigger !== 'undefined');
+  }
+
+  isBlink() {
+    return this.execute(() => (isChrome || isOpera) && !!(window as any).CSS);
+  }
+
+  isTouchScreen() {
+    return this.execute(() => matchMedia?.('(hover: none), (pointer: coarse)').matches);
+  }
+
+  isDarkMode() {
+    return this.execute(() => matchMedia?.('(prefers-color-scheme: dark)').matches);
+  }
+
+  isBrowser() {
+    return this.execute(() => true);
   }
 }
 
-let isBrowserless = typeof process !== undefined && !isFirefox;
+const instance = Browser.get();
+const isOpera = instance.isOpera();
+const isSafari = instance.isSafari();
+const isChrome = instance.isChrome();
+const isIE = instance.isIE();
+const isFirefox = instance.isFirefox();
+const isEdge = instance.isEdge();
+const isBlink = instance.isBlink();
+const isMobile = instance.isMobile();
+const isTouchScreen = instance.isTouchScreen();
+const isDarkMode = instance.isDarkMode();
 
-export {
-  isOpera,
-  isSafari,
-  isChrome,
-  isIE,
-  isFirefox,
-  isEdge,
-  isBlink,
-  isMobile,
-  isTouchScreen,
-  isDarkMode,
-  isBrowserless,
-};
+export { Browser, isBlink, isChrome, isDarkMode, isEdge, isFirefox, isIE, isMobile, isOpera, isSafari, isTouchScreen };

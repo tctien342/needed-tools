@@ -1,6 +1,6 @@
 {
   "name": "@saintno/needed-tools",
-  "version": "0.1.5",
+  "version": "0.1.8",
   "description": "Collection of needed tools for web project",
   "main": "build/index.js",
   "module": "build/index.es.js",
@@ -73,7 +73,7 @@
   "dependencies": {
     "axios": "^0.26.1",
     "chalk": "4",
-    "idb-keyval": "^6.1.0",
+    "idb-keyval": "^6.2.0",
     "lodash": "^4.17.21"
   }
 }

@@ -7,14 +7,17 @@
  * @param arr Array need to be joined
  * @param value Item will be join into array
  */
-const joinIntoArray = <T = {}, B = {}>(arr: T[], value: B): (T | B)[] => {
-  return arr.reduce((result, element, index, array) => {
-    result.push(element);
-    if (index < array.length - 1) {
-      result.push(value);
-    }
-    return result;
-  }, [] as (T | B)[]);
+const joinIntoArray = <T = unknown, B = unknown>(arr: T[], value: B): (B | T)[] => {
+  return arr.reduce(
+    (result, element, index, array) => {
+      result.push(element);
+      if (index < array.length - 1) {
+        result.push(value);
+      }
+      return result;
+    },
+    [] as (B | T)[],
+  );
 };
 
 /**
@@ -33,7 +36,7 @@ const delay = (ms: number): Promise<boolean> => {
  * Check if item is array or not, if not create an array with itself
  * @param {object | string} item Item need to return array
  */
-const whetherArray = <T = {}>(item?: T | T[]): T[] => {
+const whetherArray = <T = unknown>(item?: T | T[]): T[] => {
   if (Array.isArray(item)) {
     return item;
   }

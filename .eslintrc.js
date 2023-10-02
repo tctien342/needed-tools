@@ -1,45 +1,35 @@
 module.exports = {
-  root: true,
-  parser: '@typescript-eslint/parser', // Specifies the ESLint parser
-  plugins: ['@typescript-eslint', 'simple-import-sort'],
+  env: { browser: true, es2021: true, jest: true },
+  extends: ['plugin:@typescript-eslint/recommended', 'prettier', 'plugin:perfectionist/recommended-natural'],
+  overrides: [
+    {
+      files: ['*.js'],
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off',
+      },
+    },
+    {
+      files: ['*.d.ts'],
+      rules: { '@typescript-eslint/ban-types': 'off' },
+    },
+  ],
+  parser: '@typescript-eslint/parser',
   parserOptions: {
-    ecmaVersion: 2020, // Allows for the parsing of modern ECMAScript features
-    sourceType: 'module', // Allows for the use of imports
     ecmaFeatures: {
       jsx: true,
     },
+    ecmaVersion: 'latest',
+    sourceType: 'module',
   },
-  settings: {
-    react: {
-      version: 'detect', // Tells eslint-plugin-react to automatically detect the version of React to use
-    },
-  },
-  extends: [
-    'plugin:@typescript-eslint/recommended', // Uses the recommended rules from the @typescript-eslint/eslint-plugin
-  ],
+  plugins: ['@typescript-eslint', 'import', 'perfectionist', 'prettier'],
+  root: true,
   rules: {
-    // Place to specify ESLint rules. Can be used to overwrite rules specified from the extended configs
-    // e.g. "@typescript-eslint/explicit-function-return-type": "off",
-    '@typescript-eslint/ban-types': 'off',
-    'simple-import-sort/imports': 'error',
-    'simple-import-sort/exports': 'error',
-    'max-len': [
-      'error',
-      {
-        code: 120,
-        ignoreComments: true,
-        ignoreUrls: true,
-        ignoreStrings: true,
-        ignoreTemplateLiterals: true,
-      },
-    ],
+    '@typescript-eslint/no-explicit-any': 'warn',
+    'arrow-body-style': 'off',
+    'import/first': 'error',
+    'import/newline-after-import': 'error',
+    'import/no-duplicates': 'error',
+    'prefer-arrow-callback': 'off',
+    'prettier/prettier': 'error',
   },
-  overrides: [
-    {
-      files: ['**/*.tsx'],
-      rules: {
-        'react/prop-types': 'off',
-      },
-    },
-  ],
 };

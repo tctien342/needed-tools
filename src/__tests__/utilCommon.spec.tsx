@@ -2,7 +2,6 @@ import { delay, joinIntoArray, whetherArray } from '@utils/common';
 
 describe('Test common utils', () => {
   test('Delay should work correctly', async () => {
-    jest.setTimeout(350);
     const test = true;
     await delay(300);
     expect(test).toBeDefined();

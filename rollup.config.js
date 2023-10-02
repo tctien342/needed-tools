@@ -13,15 +13,15 @@ export default [
     input: 'src/index.tsx',
     output: [
       {
+        exports: 'named',
         file: pkg.main,
         format: 'cjs',
-        exports: 'named',
         sourcemap: true,
       },
       {
+        exports: 'named',
         file: pkg.module,
         format: 'esm',
-        exports: 'named',
         sourcemap: true,
       },
     ],
@@ -30,18 +30,18 @@ export default [
       external(),
       resolve(),
       typescript({
-        rollupCommonJSResolveHack: true,
-        exclude: ['**/__tests__/**', '__Template'],
         clean: true,
-        typescript: require('ttypescript'),
+        exclude: ['**/__tests__/**', '__Template'],
+        rollupCommonJSResolveHack: true,
         tsconfigDefaults: {
           compilerOptions: {
             plugins: [
               { transform: 'typescript-transform-paths' },
-              { transform: 'typescript-transform-paths', afterDeclarations: true },
+              { afterDeclarations: true, transform: 'typescript-transform-paths' },
             ],
           },
         },
+        typescript: require('ttypescript'),
       }),
       commonjs({
         include: ['node_modules/**'],

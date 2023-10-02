@@ -15,12 +15,12 @@ class MousePosition {
   get() {
     return { x: this.x, y: this.y };
   }
+  onMouseMove(e: MouseEvent) {
+    this.set(e.clientX, e.clientY);
+  }
   set(x: number, y: number) {
     this.x = x;
     this.y = y;
-  }
-  onMouseMove(e: MouseEvent) {
-    this.set(e.clientX, e.clientY);
   }
 }
 
@@ -33,4 +33,4 @@ const getMousePosition = (): { x: number; y: number } => {
   return MousePos.get();
 };
 
-export { getMousePosition, MousePos };
+export { MousePos, getMousePosition };

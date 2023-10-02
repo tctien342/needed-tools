@@ -27,6 +27,36 @@ class Browser {
     return false;
   }
 
+  isBlink() {
+    return this.execute(() => (isChrome || isOpera) && !!(window as any).CSS);
+  }
+
+  isBrowser() {
+    return this.execute(() => true);
+  }
+
+  isChrome() {
+    return this.execute(
+      () => !!(window as any).chrome && (!!(window as any).chrome.webstore || !!(window as any).chrome.runtime),
+    );
+  }
+
+  isDarkMode() {
+    return this.execute(() => matchMedia?.('(prefers-color-scheme: dark)').matches);
+  }
+
+  isEdge() {
+    return this.execute(() => !isIE && !!(window as any).StyleMedia);
+  }
+
+  isFirefox() {
+    return this.execute(() => typeof InstallTrigger !== 'undefined');
+  }
+
+  isIE() {
+    return this.execute(() => false || !!(document as any).documentMode);
+  }
+
   isMobile() {
     return this.execute(() => {
       if (globalThis.navigator) {
@@ -48,38 +78,8 @@ class Browser {
     return this.execute(() => /^((?!chrome|android).)*safari/i.test(navigator.userAgent));
   }
 
-  isChrome() {
-    return this.execute(
-      () => !!(window as any).chrome && (!!(window as any).chrome.webstore || !!(window as any).chrome.runtime),
-    );
-  }
-
-  isIE() {
-    return this.execute(() => false || !!(document as any).documentMode);
-  }
-
-  isEdge() {
-    return this.execute(() => !isIE && !!(window as any).StyleMedia);
-  }
-
-  isFirefox() {
-    return this.execute(() => typeof InstallTrigger !== 'undefined');
-  }
-
-  isBlink() {
-    return this.execute(() => (isChrome || isOpera) && !!(window as any).CSS);
-  }
-
   isTouchScreen() {
     return this.execute(() => matchMedia?.('(hover: none), (pointer: coarse)').matches);
-  }
-
-  isDarkMode() {
-    return this.execute(() => matchMedia?.('(prefers-color-scheme: dark)').matches);
-  }
-
-  isBrowser() {
-    return this.execute(() => true);
   }
 }
 

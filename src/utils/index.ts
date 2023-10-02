@@ -4,7 +4,7 @@ import { CacheManager } from '@utils/cache';
 import { delay } from '@utils/common';
 import { getWindowRelativeOffset } from '@utils/element';
 import { Logger } from '@utils/log';
-import { getMousePosition, MousePos } from '@utils/mouse';
+import { MousePos, getMousePosition } from '@utils/mouse';
 import { QueueManager } from '@utils/queue';
 import { CommonRegex } from '@utils/regex';
 

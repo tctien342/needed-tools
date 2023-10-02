@@ -1,21 +1,21 @@
 import { CACHE_TIME_TEMPLATE, DEFAULT_CACHE_TIME } from '@constants/cache';
-import { clear, createStore, del, entries, get, getMany, set, setMany, UseStore } from 'idb-keyval';
+import { UseStore, clear, createStore, del, entries, get, getMany, set, setMany } from 'idb-keyval';
 
 import { Logger } from './log';
 
-interface ICachedData<T = {}> {
+interface ICachedData<T = unknown> {
   /**
    * Cached data
    */
   data: T;
   /**
-   * Time to live of data
-   */
-  ttl: number;
-  /**
    * Tag for this cache
    */
   tags?: string[];
+  /**
+   * Time to live of data
+   */
+  ttl: number;
 }
 
 /**
@@ -29,9 +29,9 @@ class CacheManager {
 
   activated: boolean;
   debug: Logger;
+  loadStatus: 'denied' | 'init' | 'loaded';
   store: UseStore;
   storeName: string;
-  loadStatus: 'init' | 'denied' | 'loaded';
 
   constructor(storeName: string, activated = true, log = true) {
     this.activated = activated;
@@ -55,20 +55,6 @@ class CacheManager {
         this.loadStatus = 'denied';
         this.debug.w('createStore', 'Failed to create store, indexDB not allow to write');
       });
-  }
-
-  public setActivated(active: boolean) {
-    this.activated = active;
-  }
-
-  /**
-   * Remove all cache
-   */
-  public clear(): void {
-    if (this.loadStatus !== 'loaded' || !this.activated) return;
-
-    this.debug.i('clear', 'Triggered');
-    clear(this.store);
   }
 
   /**
@@ -102,6 +88,16 @@ class CacheManager {
   }
 
   /**
+   * Remove all cache
+   */
+  public clear(): void {
+    if (this.loadStatus !== 'loaded' || !this.activated) return;
+
+    this.debug.i('clear', 'Triggered');
+    clear(this.store);
+  }
+
+  /**
    * Clean cache by a tag
    */
   public async clearByTag(tag: string): Promise<void> {
@@ -116,48 +112,18 @@ class CacheManager {
   }
 
   /**
-   * Get an cache
-   */
-  public async set<T = {}>({
-    key,
-    data,
-    tl = DEFAULT_CACHE_TIME,
-    tags = [],
-  }: {
-    key: string;
-    data: T;
-    tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
-    tags?: string[];
-  }): Promise<void> {
-    if (this.loadStatus !== 'loaded' || !this.activated) return;
-
-    this.debug.i('set', 'Incomming new cache', { key, tl, tags, data });
-    const currentTime = Date.now();
-    const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
-    await set(
-      key,
-      {
-        data,
-        ttl: offsetTime,
-        tags,
-      },
-      this.store,
-    );
-  }
-
-  /**
    * Set an cache
    */
-  public async get<T = {}>({
-    key,
-    tl = DEFAULT_CACHE_TIME,
-    tags = [],
+  public async get<T = unknown>({
     generator,
+    key,
+    tags = [],
+    tl = DEFAULT_CACHE_TIME,
   }: {
-    key: string;
-    tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
-    tags?: string[];
     generator?: () => Promise<T>;
+    key: string;
+    tags?: string[];
+    tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
   }): Promise<T | null> {
     if (this.loadStatus !== 'loaded' || !this.activated) return generator?.() || null;
 
@@ -165,13 +131,13 @@ class CacheManager {
     const currentTime = Date.now();
 
     if (currentData && currentTime <= currentData.ttl) {
-      this.debug.i('get', 'Getting cache data', { key, tl, tags });
+      this.debug.i('get', 'Getting cache data', { key, tags, tl });
       return currentData.data;
     }
 
     if (!generator) return null;
     try {
-      this.debug.i('get', 'Generate new cache data', { key, tl, tags });
+      this.debug.i('get', 'Generate new cache data', { key, tags, tl });
       const newData = await generator();
       if (newData) {
         const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
@@ -179,8 +145,8 @@ class CacheManager {
           key,
           {
             data: newData,
-            ttl: offsetTime,
             tags,
+            ttl: offsetTime,
           },
           this.store,
         );
@@ -192,27 +158,61 @@ class CacheManager {
     }
   }
 
-  public async setMany<T = {}>(
-    data: { key: string; tl?: keyof typeof CACHE_TIME_TEMPLATE | number; tags?: string[]; data: T }[],
-  ): Promise<void> {
-    if (this.loadStatus !== 'loaded' || !this.activated) return;
-
-    const importData: [string, ICachedData][] = data.map((item) => {
-      const { key, tl = DEFAULT_CACHE_TIME, tags = [], data: itemData } = item;
-      const currentTime = Date.now();
-      const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
-      return [key, { data: itemData, ttl: offsetTime, tags }];
-    });
-    this.debug.i('setMany', 'Call set many data at once', { total: importData.length });
-    await setMany(importData, this.store);
-  }
-
-  public async getMany<T = {}>(keys: string[]): Promise<T[]> {
+  public async getMany<T = unknown>(keys: string[]): Promise<T[]> {
     if (this.loadStatus !== 'loaded' || !this.activated) return [];
 
     this.debug.i('getMany', 'Call get all data by keys', keys);
     const data = await getMany(keys, this.store);
     return data;
+  }
+
+  /**
+   * Get an cache
+   */
+  public async set<T = unknown>({
+    data,
+    key,
+    tags = [],
+    tl = DEFAULT_CACHE_TIME,
+  }: {
+    data: T;
+    key: string;
+    tags?: string[];
+    tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
+  }): Promise<void> {
+    if (this.loadStatus !== 'loaded' || !this.activated) return;
+
+    this.debug.i('set', 'Incomming new cache', { data, key, tags, tl });
+    const currentTime = Date.now();
+    const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
+    await set(
+      key,
+      {
+        data,
+        tags,
+        ttl: offsetTime,
+      },
+      this.store,
+    );
+  }
+
+  public setActivated(active: boolean) {
+    this.activated = active;
+  }
+
+  public async setMany<T = unknown>(
+    data: { data: T; key: string; tags?: string[]; tl?: keyof typeof CACHE_TIME_TEMPLATE | number }[],
+  ): Promise<void> {
+    if (this.loadStatus !== 'loaded' || !this.activated) return;
+
+    const importData: [string, ICachedData][] = data.map((item) => {
+      const { data: itemData, key, tags = [], tl = DEFAULT_CACHE_TIME } = item;
+      const currentTime = Date.now();
+      const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
+      return [key, { data: itemData, tags, ttl: offsetTime }];
+    });
+    this.debug.i('setMany', 'Call set many data at once', { total: importData.length });
+    await setMany(importData, this.store);
   }
 }
 

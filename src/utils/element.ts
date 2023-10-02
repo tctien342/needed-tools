@@ -4,12 +4,12 @@
 const getWindowRelativeOffset = (
   parentWindow: Element,
   elem: Element,
-): { left: number; top: number; right: number; bottom: number } => {
+): { bottom: number; left: number; right: number; top: number } => {
   const offset = {
-    left: 0,
-    top: 0,
-    right: 0,
     bottom: 0,
+    left: 0,
+    right: 0,
+    top: 0,
   };
   // relative to the target field's document
   const childPos = elem.getBoundingClientRect();

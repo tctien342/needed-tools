@@ -2,12 +2,12 @@
 
 > Collection of saintno's useful tools
 
-### Install this into your project
+## Install this into your project
 
 - Run in cmd:
 
 ```bash
-yarn add @saintno/needed-tools lodash
+yarn add @saintno/needed-tools
 ```
 
 ### Methods and Classes

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Join an item into array like
  *
@@ -44,4 +45,23 @@ const whetherArray = <T = unknown>(item?: T | T[]): T[] => {
   return result;
 };
 
-export { delay, joinIntoArray, whetherArray };
+const deepMerge = <T = unknown, S = unknown>(target: T, source: S): S & T => {
+  if (isObject(target) && isObject(source)) {
+    for (const key in source) {
+      if (isObject(source[key])) {
+        if (!(target as any)[key]) Object.assign(target as any, { [key]: {} });
+        deepMerge((target as any)[key], source[key]);
+      } else {
+        Object.assign(target as any, { [key]: source[key] });
+      }
+    }
+  }
+
+  return target as any;
+};
+
+function isObject(item: any) {
+  return item && typeof item === 'object' && !Array.isArray(item);
+}
+
+export { deepMerge, delay, joinIntoArray, whetherArray };

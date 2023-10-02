@@ -1,7 +1,7 @@
 import { CACHE_TIME_TEMPLATE, DEFAULT_CACHE_TIME } from '@constants/cache';
-import { UseStore, clear, createStore, del, entries, get, getMany, set, setMany } from 'idb-keyval';
 
 import { Logger } from './log';
+import { StorageManager } from './storage';
 
 interface ICachedData<T = unknown> {
   /**
@@ -29,72 +29,71 @@ class CacheManager {
 
   activated: boolean;
   debug: Logger;
-  loadStatus: 'denied' | 'init' | 'loaded';
-  store: UseStore;
+  ramCache: StorageManager<ICachedData>;
+  storeCache: StorageManager<ICachedData>;
   storeName: string;
 
   constructor(storeName: string, activated = true, log = true) {
     this.activated = activated;
-    this.loadStatus = 'init';
     this.storeName = storeName;
     this.debug = new Logger(`CACHE_${storeName}`, log);
-    this.createStore();
-  }
-
-  private createStore(): void {
-    set('IDB_TEST_WRITE', 'SUCCESS_WRITE_TO_DB')
-      .then(() => {
-        /**
-         * IDB is accepted to transfer data
-         */
-        this.store = createStore(this.storeName, this.storeName);
-        this.loadStatus = 'loaded';
-        this.debug.i('createStore', 'Success connect to store');
-      })
-      .catch(() => {
-        this.loadStatus = 'denied';
-        this.debug.w('createStore', 'Failed to create store, indexDB not allow to write');
-      });
+    this.ramCache = new StorageManager<ICachedData>(`RAM_${storeName}`, { log, ramCache: true });
+    this.storeCache = new StorageManager<ICachedData>(`STORE_${storeName}`, { log });
   }
 
   /**
    * Clean current cache
    */
   public async clean(opts?: { tag?: string; tags?: string[] }): Promise<void> {
-    if (this.loadStatus !== 'loaded' || !this.activated) return;
+    if (!this.storeCache.isAvailable || !this.ramCache.isAvailable || !this.activated) return;
 
     this.debug.i('clean', 'Triggered with option', opts);
-    const currentData: [IDBValidKey, ICachedData][] = await entries(this.store);
+
+    /**
+     * Clear IDB Cache
+     */
+    const storageData: [string, ICachedData][] = await this.storeCache.entries();
+    const ramData: [string, ICachedData][] = await this.ramCache.entries();
     const currentTime = Date.now();
-    for (const cacheItem of currentData) {
+
+    const cleanJob = [...storageData, ...ramData].map(async (cacheItem, idx) => {
+      const store = idx < storageData.length ? this.storeCache : this.ramCache;
       if (cacheItem[1].ttl < currentTime) {
-        await del(cacheItem[0], this.store);
-        continue;
+        await store.remove(cacheItem[0].toString());
+        return;
       }
       if (cacheItem[1].tags) {
         if (opts?.tag) {
           if (cacheItem[1].tags.includes(opts.tag)) {
-            await del(cacheItem[0], this.store);
-            continue;
+            await store.remove(cacheItem[0].toString());
+            return;
           }
         }
         if (opts?.tags) {
-          if (cacheItem[1].tags.filter((tag) => opts.tags?.includes(tag)).length > 0) {
-            await del(cacheItem[0], this.store);
+          if (cacheItem[1].tags.some((tag) => opts.tags?.includes(tag))) {
+            await store.remove(cacheItem[0].toString());
           }
         }
       }
-    }
+    });
+    await Promise.all(cleanJob);
   }
 
   /**
    * Remove all cache
    */
   public clear(): void {
-    if (this.loadStatus !== 'loaded' || !this.activated) return;
+    if (!this.ramCache.isAvailable || !this.storeCache.isAvailable || !this.activated) return;
 
     this.debug.i('clear', 'Triggered');
-    clear(this.store);
+    /**
+     * Clear IDB Cache
+     */
+    this.storeCache.clear();
+    /**
+     * Clear LRUCache
+     */
+    this.ramCache.clear();
   }
 
   /**
@@ -117,22 +116,48 @@ class CacheManager {
   public async get<T = unknown>({
     generator,
     key,
+    onStorage = true,
     tags = [],
     tl = DEFAULT_CACHE_TIME,
   }: {
+    /**
+     * Data generator function, API call or something
+     */
     generator?: () => Promise<T>;
+    /**
+     * Cache key
+     */
     key: string;
+    /**
+     * Will store on storage if set to true
+     */
+    onStorage?: boolean;
+    /**
+     * Cache tags, depends tag for this cache
+     */
     tags?: string[];
+    /**
+     * Time to live of this cache
+     */
     tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
   }): Promise<T | null> {
-    if (this.loadStatus !== 'loaded' || !this.activated) return generator?.() || null;
+    if (!this.storeCache.isAvailable || !this.ramCache.isAvailable || !this.activated) return generator?.() || null;
 
-    const currentData = await get<ICachedData<T>>(key, this.store);
+    /**
+     * Checking if cache is available
+     */
+    let isRam = false;
+    let currentData = await this.storeCache.get(key);
+    if (!currentData) {
+      isRam = true;
+      currentData = await this.ramCache.get(key);
+    }
+
     const currentTime = Date.now();
 
     if (currentData && currentTime <= currentData.ttl) {
-      this.debug.i('get', 'Getting cache data', { key, tags, tl });
-      return currentData.data;
+      this.debug.i('get', 'Getting cache data', { isRam, key, tags, tl });
+      return currentData.data as T;
     }
 
     if (!generator) return null;
@@ -141,15 +166,7 @@ class CacheManager {
       const newData = await generator();
       if (newData) {
         const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
-        await set(
-          key,
-          {
-            data: newData,
-            tags,
-            ttl: offsetTime,
-          },
-          this.store,
-        );
+        await this.set({ data: newData, key, onStorage, tags, tl: offsetTime });
       }
       return newData;
     } catch (e) {
@@ -159,11 +176,11 @@ class CacheManager {
   }
 
   public async getMany<T = unknown>(keys: string[]): Promise<T[]> {
-    if (this.loadStatus !== 'loaded' || !this.activated) return [];
+    if (!this.storeCache.isAvailable || !this.activated) return [];
 
     this.debug.i('getMany', 'Call get all data by keys', keys);
-    const data = await getMany(keys, this.store);
-    return data;
+    const data = [...(await this.storeCache.getMany(keys)), ...(await this.ramCache.getMany(keys))];
+    return data as T[];
   }
 
   /**
@@ -172,28 +189,49 @@ class CacheManager {
   public async set<T = unknown>({
     data,
     key,
+    onStorage = false,
     tags = [],
     tl = DEFAULT_CACHE_TIME,
   }: {
+    /**
+     * Data to be cached
+     */
     data: T;
+    /**
+     * Cache key
+     */
     key: string;
+    /**
+     * Will store on storage if set to true
+     */
+    onStorage?: boolean;
+    /**
+     * Cache tags, depends tag for this cache
+     */
     tags?: string[];
+    /**
+     * Time to live of this cache
+     */
     tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
   }): Promise<void> {
-    if (this.loadStatus !== 'loaded' || !this.activated) return;
-
-    this.debug.i('set', 'Incomming new cache', { data, key, tags, tl });
+    if (!this.storeCache.isAvailable || !this.activated) return;
+    this.debug.i('set', 'Incoming new cache', { data, key, tags, tl });
     const currentTime = Date.now();
     const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
-    await set(
-      key,
-      {
+    await Promise.all([
+      onStorage
+        ? this.storeCache.set(key, {
+            data,
+            tags,
+            ttl: offsetTime,
+          })
+        : undefined,
+      this.ramCache.set(key, {
         data,
         tags,
         ttl: offsetTime,
-      },
-      this.store,
-    );
+      }),
+    ]);
   }
 
   public setActivated(active: boolean) {
@@ -201,18 +239,27 @@ class CacheManager {
   }
 
   public async setMany<T = unknown>(
-    data: { data: T; key: string; tags?: string[]; tl?: keyof typeof CACHE_TIME_TEMPLATE | number }[],
+    data: {
+      data: T;
+      key: string;
+      onStorage?: boolean;
+      tags?: string[];
+      tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
+    }[],
   ): Promise<void> {
-    if (this.loadStatus !== 'loaded' || !this.activated) return;
+    if (!this.storeCache.isAvailable || !this.activated) return;
 
-    const importData: [string, ICachedData][] = data.map((item) => {
+    const importData: [string, ICachedData, boolean][] = data.map((item) => {
       const { data: itemData, key, tags = [], tl = DEFAULT_CACHE_TIME } = item;
       const currentTime = Date.now();
       const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
-      return [key, { data: itemData, tags, ttl: offsetTime }];
+      return [key, { data: itemData, tags, ttl: offsetTime }, item.onStorage ?? false];
     });
     this.debug.i('setMany', 'Call set many data at once', { total: importData.length });
-    await setMany(importData, this.store);
+    await Promise.all([
+      this.storeCache.setMany(importData.filter((item) => item[2]).map((item) => [item[0], item[1]])),
+      this.ramCache.setMany(importData.filter((item) => !item[2]).map((item) => [item[0], item[1]])),
+    ]);
   }
 }
 

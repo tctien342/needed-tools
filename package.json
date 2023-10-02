@@ -1,6 +1,6 @@
 {
   "name": "@saintno/needed-tools",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Collection of needed tools for web project",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -26,7 +26,7 @@
   "devDependencies": {
     "@types/chroma-js": "^2.4.1",
     "@types/jest": "^29.5.5",
-    "@types/lodash": "^4.14.199",
+    "@types/node-localstorage": "^1.3.1",
     "@typescript-eslint/eslint-plugin": "^6.7.3",
     "@typescript-eslint/parser": "^6.7.3",
     "bun-types": "^1.0.3",
@@ -43,9 +43,6 @@
     "pretty-quick": "^3.1.3",
     "typescript": "^5.2.2"
   },
-  "peerDependencies": {
-    "lodash": "^4.17.21"
-  },
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged && pretty-quick --staged"
@@ -57,10 +54,12 @@
   "files": [
     "build"
   ],
+  "peerDependencies": {},
   "dependencies": {
     "chalk": "4",
     "idb-keyval": "^6.2.1",
-    "lodash": "^4.17.21",
-    "lru-cache": "^10.0.1"
+    "lru-cache": "^10.0.1",
+    "node-localstorage": "^3.0.5",
+    "queue-typed": "^1.33.6"
   }
 }

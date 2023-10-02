@@ -12,11 +12,14 @@ class MousePosition {
       window.addEventListener('mouseenter', (ev) => this.onMouseMove(ev), true);
     }
   }
+  private onMouseMove(e: MouseEvent) {
+    this.set(e.clientX, e.clientY);
+  }
   get() {
     return { x: this.x, y: this.y };
   }
-  onMouseMove(e: MouseEvent) {
-    this.set(e.clientX, e.clientY);
+  onMove(callback: (x: number, y: number) => void) {
+    callback(this.x, this.y);
   }
   set(x: number, y: number) {
     this.x = x;

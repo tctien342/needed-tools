@@ -2,7 +2,8 @@
 import { CacheManager } from '@utils/cache';
 import { QueueManager } from '@utils/queue';
 
-let ApiCache: CacheManager;
+const ApiCache = new CacheManager('API');
+
 let APIHook = {
   beforeCall: (url: string, config: RequestInit) => {
     return { config, url };
@@ -10,16 +11,12 @@ let APIHook = {
   beforeReturn: (data: any) => {
     return data;
   },
-  onError: (error: Error) => {
+  onError: (error: Response) => {
     throw error;
   },
 };
 
 const ApiQueue = new QueueManager('APIQueue');
-
-if (typeof window !== 'undefined' && typeof window.navigator !== 'undefined') {
-  ApiCache = new CacheManager('API');
-}
 
 function tFetch<TResponse>(
   url: string,
@@ -35,12 +32,14 @@ function tFetch<TResponse>(
   return (
     fetch(newUrl, newConfig)
       // When got a response call a `json` method on it
-      .then((response) => response.json())
-      // and return the result data.
+      .then((response) => {
+        if (response.ok) return response.json();
+        throw response;
+      })
       .then((data) => APIHook.beforeReturn(data))
       // If something went wrong, we catch an error
       // and throw it again to stop the execution.
-      .catch((error) => APIHook.onError(error))
+      .catch((error) => APIHook.onError(error as Response))
   );
 }
 
@@ -67,6 +66,8 @@ class APIQueueItem {
    */
   private mode: 'high' | 'low' | 'now' = 'low';
 
+  private storageType: 'local' | 'ram' = 'ram';
+
   /**
    * URL of this API Item
    */
@@ -75,6 +76,7 @@ class APIQueueItem {
   constructor(url: string) {
     this.url = url;
   }
+
   private async update<T = unknown>(method: 'patch' | 'post' | 'put', data: any, config?: RequestInit) {
     /*
      * Clear all it dependencys
@@ -103,6 +105,7 @@ class APIQueueItem {
       return result;
     }, this.mode === 'high');
   }
+
   /**
    * Add cache to this API, default is 2min
    */
@@ -110,6 +113,7 @@ class APIQueueItem {
     this.cacheConfig = { ...conf, tl: CacheManager.TIME[conf.tl || '2min'] };
     return this;
   }
+
   /**
    * Call DELETE method
    */
@@ -140,7 +144,6 @@ class APIQueueItem {
       return result;
     }, this.mode === 'high');
   }
-
   /**
    * Call GET method
    */
@@ -181,6 +184,7 @@ class APIQueueItem {
       const data = await ApiCache.get({
         generator: getData,
         key: this.url,
+        onStorage: this.storageType === 'local',
         tags: this.cacheConfig.tags,
         tl: this.cacheConfig.tl,
       });
@@ -224,6 +228,14 @@ class APIQueueItem {
    */
   async put<T = unknown>(data: any, config?: RequestInit) {
     return this.update<T>('put', data, config);
+  }
+
+  /**
+   * Set this API to be cached in storage
+   */
+  storage() {
+    this.storageType = 'local';
+    return this;
   }
 }
 

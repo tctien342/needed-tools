@@ -26,3 +26,4 @@ launch.json
 *.zip
 .eslintcache
 .idea
+.tmp-storage

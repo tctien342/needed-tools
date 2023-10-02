@@ -1,3 +1,5 @@
+import { LinkedListQueue } from 'queue-typed';
+
 import { Logger } from './log';
 
 export type TQueueJob = () => Promise<void> | void;
@@ -21,10 +23,10 @@ class QueueManager {
   /**
    * Job queue
    */
-  queue: TQueueJob[];
+  queue: LinkedListQueue<TQueueJob>;
 
   constructor(name: string, maxProcessing = 4, log = true) {
-    this.queue = [];
+    this.queue = new LinkedListQueue<TQueueJob>();
     this.processing = 0;
     this.maxProcessing = maxProcessing;
     this.debug = new Logger(name, log);
@@ -37,29 +39,9 @@ class QueueManager {
     if (high) {
       this.queue.unshift(job);
     } else {
-      this.queue.push(job);
+      this.queue.enqueue(job);
     }
-    void this.processJob();
-  }
-
-  async processJob() {
-    if (this.queue.length > 0 && this.processing < this.maxProcessing) {
-      this.debug.i('processJob', 'Processing job in array', {
-        doing: this.processing,
-        length: this.queue.length,
-      });
-      const job = this.queue.shift();
-      if (job) {
-        this.processing++;
-        try {
-          await job();
-        } catch (e) {
-          this.debug.w('processJob', 'Failed process job', job);
-        }
-        this.processing--;
-        void this.processJob();
-      }
-    }
+    void this.work();
   }
 
   /**
@@ -71,6 +53,26 @@ class QueueManager {
         job().then(rs).catch(rj);
       }, high);
     });
+  }
+
+  async work() {
+    if (!this.queue.isEmpty() && this.processing < this.maxProcessing) {
+      this.debug.i('work', 'Found job available, working on it', {
+        availableThread: this.maxProcessing - this.processing,
+        count: this.queue.length,
+      });
+      const job = this.queue.dequeue();
+      if (job) {
+        this.processing++;
+        try {
+          await job();
+        } catch (e) {
+          this.debug.w('work', 'Failed on processing job', job);
+        }
+        this.processing--;
+        void this.work();
+      }
+    }
   }
 }
 

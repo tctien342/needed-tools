@@ -1,8 +1,8 @@
 import { LOG_DEFAULT_CONF } from '@constants/log';
 import chalk from 'chalk';
-import { merge } from 'lodash';
 
 import { Browser } from './browser';
+import { deepMerge } from './common';
 
 type TFallback = <T = unknown>(data: { fnData: T; fnMessage: string; fnName: string }) => void;
 
@@ -27,7 +27,7 @@ class Logger {
   constructor(name: string, activated = true, config: Partial<typeof LOG_DEFAULT_CONF> = {}) {
     this.name = name;
     this.activated = activated;
-    this.config = merge(this.config, config);
+    this.config = deepMerge(this.config, config);
     this.fallback = null;
     return this;
   }

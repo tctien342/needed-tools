@@ -5,8 +5,8 @@
   "main": "build/index.js",
   "typings": "build/index.d.ts",
   "scripts": {
-    "build": "rollup -c",
-    "test": "jest --coverage --maxWorkers=1",
+    "build": "bun build.ts",
+    "test": "bun test",
     "lint": "eslint --cache --quiet --ext .js,.jsx,.ts,.tsx --fix 'src/**/*.{js,jsx,ts,tsx}'",
     "lint:staged": "lint-staged",
     "format": "prettier --write .",
@@ -25,6 +25,7 @@
   "homepage": "https://github.com/tctien342/needed-tools#readme",
   "devDependencies": {
     "@types/chroma-js": "^2.4.1",
+    "@types/jest": "^29.5.5",
     "@types/lodash": "^4.14.199",
     "@typescript-eslint/eslint-plugin": "^6.7.3",
     "@typescript-eslint/parser": "^6.7.3",
@@ -43,7 +44,6 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "axios": "^0.26.1",
     "lodash": "^4.17.21"
   },
   "husky": {
@@ -58,9 +58,9 @@
     "build"
   ],
   "dependencies": {
-    "axios": "^1.5.1",
     "chalk": "4",
     "idb-keyval": "^6.2.1",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "lru-cache": "^10.0.1"
   }
 }

@@ -1,19 +1,47 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CacheManager } from '@utils/cache';
 import { QueueManager } from '@utils/queue';
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+
+let ApiCache: CacheManager;
+let APIHook = {
+  beforeCall: (url: string, config: RequestInit) => {
+    return { config, url };
+  },
+  beforeReturn: (data: any) => {
+    return data;
+  },
+  onError: (error: Error) => {
+    throw error;
+  },
+};
 
 const ApiQueue = new QueueManager('APIQueue');
-let ApiCache: CacheManager;
-let ApiInstance: AxiosInstance = axios;
 
 if (typeof window !== 'undefined' && typeof window.navigator !== 'undefined') {
   ApiCache = new CacheManager('API');
-  ApiInstance = axios.create({
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
+}
+
+function tFetch<TResponse>(
+  url: string,
+  // `RequestInit` is a type for configuring
+  // a `fetch` request. By default, an empty object.
+  config: RequestInit = {},
+
+  // This function is async, it will return a Promise:
+): Promise<TResponse> {
+  // Inside, we call the `fetch` function with
+  // a URL and config given:
+  const { config: newConfig, url: newUrl } = APIHook.beforeCall(url, config);
+  return (
+    fetch(newUrl, newConfig)
+      // When got a response call a `json` method on it
+      .then((response) => response.json())
+      // and return the result data.
+      .then((data) => APIHook.beforeReturn(data))
+      // If something went wrong, we catch an error
+      // and throw it again to stop the execution.
+      .catch((error) => APIHook.onError(error))
+  );
 }
 
 class APIQueueItem {
@@ -21,12 +49,14 @@ class APIQueueItem {
    * Get current API queue manager instance
    */
   static getQueueInstance = () => ApiQueue;
+
   /**
-   * Set current instance into new axios instance for customize
+   * API hook setting
    */
-  static setApiInstance = (instance: AxiosInstance) => {
-    ApiInstance = instance;
+  static setHook = (hook: Partial<typeof APIHook>) => {
+    APIHook = { ...APIHook, ...hook };
   };
+
   /**
    * Cache setting of this API
    */
@@ -45,7 +75,7 @@ class APIQueueItem {
   constructor(url: string) {
     this.url = url;
   }
-  private async update<T = unknown>(method: 'patch' | 'post' | 'put', data: any, config?: AxiosRequestConfig) {
+  private async update<T = unknown>(method: 'patch' | 'post' | 'put', data: any, config?: RequestInit) {
     /*
      * Clear all it dependencys
      */
@@ -55,12 +85,21 @@ class APIQueueItem {
     /**
      * API need process instantly
      */
-    if (this.mode === 'now') return ApiInstance[method]<T>(this.url, data, config);
+    if (this.mode === 'now')
+      return tFetch<T>(this.url, {
+        body: JSON.stringify(data),
+        method: method.toUpperCase(),
+        ...config,
+      });
     /**
      * Add into queue
      */
     return ApiQueue.wait(async () => {
-      const result = await ApiInstance[method]<T>(this.url, data, config);
+      const result = await tFetch<T>(this.url, {
+        body: JSON.stringify(data),
+        method: method.toUpperCase(),
+        ...config,
+      });
       return result;
     }, this.mode === 'high');
   }
@@ -74,7 +113,7 @@ class APIQueueItem {
   /**
    * Call DELETE method
    */
-  async delete<T = unknown>(config?: AxiosRequestConfig) {
+  async delete<T = unknown>(config?: RequestInit) {
     /*
      * Clear all it dependencys
      */
@@ -84,12 +123,20 @@ class APIQueueItem {
     /**
      * API need process instantly
      */
-    if (this.mode === 'now') return ApiInstance.delete<T>(this.url, config);
+    if (this.mode === 'now') {
+      return tFetch<T>(this.url, {
+        method: 'DELETE',
+        ...config,
+      });
+    }
     /**
      * Add into queue
      */
     return ApiQueue.wait(async () => {
-      const result = await ApiInstance.delete<T>(this.url, config);
+      const result = await tFetch<T>(this.url, {
+        method: 'DELETE',
+        ...config,
+      });
       return result;
     }, this.mode === 'high');
   }
@@ -97,9 +144,9 @@ class APIQueueItem {
   /**
    * Call GET method
    */
-  async get<T = unknown>(config?: AxiosRequestConfig) {
+  async get<T = unknown>(config?: RequestInit) {
     /**
-     * Clear all it dependencys
+     * Clear all it dependency
      */
     const getData = async () => {
       if (this.cacheConfig?.deps) {
@@ -107,8 +154,11 @@ class APIQueueItem {
       }
       try {
         const call = async () => {
-          const data = await ApiInstance.get<T>(this.url, config);
-          return data.data;
+          const data = await tFetch<T>(this.url, {
+            method: 'GET',
+            ...config,
+          });
+          return data;
         };
         /**
          * API need process instantly
@@ -158,21 +208,21 @@ class APIQueueItem {
   /**
    * Call PATCH method
    */
-  async patch<T = unknown>(data: any, config?: AxiosRequestConfig) {
+  async patch<T = unknown>(data: any, config?: RequestInit) {
     return this.update<T>('patch', data, config);
   }
 
   /**
    * Call POST method
    */
-  async post<T = unknown>(data: any, config?: AxiosRequestConfig) {
+  async post<T = unknown>(data: any, config?: RequestInit) {
     return this.update<T>('post', data, config);
   }
 
   /**
    * Call PUT method
    */
-  async put<T = unknown>(data: any, config?: AxiosRequestConfig) {
+  async put<T = unknown>(data: any, config?: RequestInit) {
     return this.update<T>('put', data, config);
   }
 }

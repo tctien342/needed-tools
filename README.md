@@ -10,12 +10,6 @@
 yarn add @saintno/needed-tools lodash
 ```
 
-- For using API cache, add axios:
-
-```bash
-yarn add axios
-```
-
 ### Methods and Classes
 
 #### Browser
@@ -154,15 +148,15 @@ const data = new APIQueueItem('https://google.com.vn')
     tags: ['DATA'], // Tag of this cache on CacheManager
     deps: ['DATA_1'], // Auto clear other tags when call this
   })
-  .now() // Bypass queue, call directly into axios
+  .now() // Bypass queue, call directly into fetch
   .get<IAppData>();
 
 // Post method, high priority
 new APIQueueItem(`https://google.com.vn/${id}`).high().post({ name: 'SaintNo' });
 
-// Default APIQueueItem will use axios instance, if you want customize that instance, create an axios instance by your self then bind it:
-const axiosInstance = axios.create(); // Create your instance
-APIQueueItem.setApiInstance(axiosInstance); // Bind it
+// Default APIQueueItem will use fetch instance, if you want customize that instance, create an fetch instance by your self then bind it:
+const fetchInstance = fetch.create(); // Create your instance
+APIQueueItem.setApiInstance(fetchInstance); // Bind it
 ```
 
 #### Other `Tools`

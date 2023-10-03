@@ -61,6 +61,7 @@ class StorageManager<T extends object> {
       };
       this.loadStatus = 'loaded';
       this.log.i('createStore', 'Success connect to store');
+      return;
     }
     if (isLocalStorageAvailable) {
       this.store = {
@@ -69,6 +70,7 @@ class StorageManager<T extends object> {
       };
       this.loadStatus = 'loaded';
       this.log.i('createStore', 'IDB not supported, fallback to local storage');
+      return;
     }
     // Fall back to ram cache
     return this.createRamCache();

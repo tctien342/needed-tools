@@ -28,7 +28,7 @@ class Browser {
   }
 
   isBlink() {
-    return this.execute(() => (isChrome || isOpera) && !!(window as any).CSS);
+    return this.execute(() => (this.isChrome() || this.isOpera()) && !!(window as any).CSS);
   }
 
   isBrowser() {
@@ -42,11 +42,11 @@ class Browser {
   }
 
   isDarkMode() {
-    return this.execute(() => matchMedia?.('(prefers-color-scheme: dark)').matches);
+    return this.execute(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches);
   }
 
   isEdge() {
-    return this.execute(() => !isIE && !!(window as any).StyleMedia);
+    return this.execute(() => !this.isIE() && !!(window as any).StyleMedia);
   }
 
   isFirefox() {
@@ -79,7 +79,7 @@ class Browser {
   }
 
   isTouchScreen() {
-    return this.execute(() => matchMedia?.('(hover: none), (pointer: coarse)').matches);
+    return this.execute(() => window.matchMedia?.('(hover: none), (pointer: coarse)').matches);
   }
 }
 

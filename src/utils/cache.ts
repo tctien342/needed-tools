@@ -179,8 +179,10 @@ class CacheManager {
     if (!this.storeCache.isAvailable || !this.activated) return [];
 
     this.debug.i('getMany', 'Call get all data by keys', keys);
-    const data = [...(await this.storeCache.getMany(keys)), ...(await this.ramCache.getMany(keys))];
-    return data as T[];
+    const data = [...(await this.storeCache.getMany(keys)), ...(await this.ramCache.getMany(keys))].filter(
+      (item) => item !== undefined,
+    );
+    return data.map((item) => item?.data as T);
   }
 
   /**

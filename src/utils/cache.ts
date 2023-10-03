@@ -45,7 +45,7 @@ class CacheManager {
    * Clean current cache
    */
   public async clean(opts?: { tag?: string; tags?: string[] }): Promise<void> {
-    if (!this.storeCache.isAvailable || !this.ramCache.isAvailable || !this.activated) return;
+    if (!this.ramCache.isAvailable || !this.activated) return;
 
     this.debug.i('clean', 'Triggered with option', opts);
 
@@ -83,7 +83,7 @@ class CacheManager {
    * Remove all cache
    */
   public clear(): void {
-    if (!this.ramCache.isAvailable || !this.storeCache.isAvailable || !this.activated) return;
+    if (!this.ramCache.isAvailable || !this.activated) return;
 
     this.debug.i('clear', 'Triggered');
     /**
@@ -141,7 +141,7 @@ class CacheManager {
      */
     tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
   }): Promise<T | null> {
-    if (!this.storeCache.isAvailable || !this.ramCache.isAvailable || !this.activated) return generator?.() || null;
+    if (!this.ramCache.isAvailable || !this.activated) return generator?.() || null;
 
     /**
      * Checking if cache is available
@@ -176,7 +176,7 @@ class CacheManager {
   }
 
   public async getMany<T = unknown>(keys: string[]): Promise<T[]> {
-    if (!this.storeCache.isAvailable || !this.activated) return [];
+    if (!this.activated) return [];
 
     this.debug.i('getMany', 'Call get all data by keys', keys);
     const data = [...(await this.storeCache.getMany(keys)), ...(await this.ramCache.getMany(keys))].filter(
@@ -216,7 +216,7 @@ class CacheManager {
      */
     tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
   }): Promise<void> {
-    if (!this.storeCache.isAvailable || !this.activated) return;
+    if (!this.activated) return;
     this.debug.i('set', 'Incoming new cache', { data, key, tags, tl });
     const currentTime = Date.now();
     const offsetTime = currentTime + (typeof tl === 'string' ? CACHE_TIME_TEMPLATE[tl] : tl);
@@ -249,7 +249,7 @@ class CacheManager {
       tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
     }[],
   ): Promise<void> {
-    if (!this.storeCache.isAvailable || !this.activated) return;
+    if (!this.activated) return;
 
     const importData: [string, ICachedData, boolean][] = data.map((item) => {
       const { data: itemData, key, tags = [], tl = DEFAULT_CACHE_TIME } = item;

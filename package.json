@@ -1,6 +1,6 @@
 {
   "name": "@saintno/needed-tools",
-  "version": "0.2.0",
+  "version": "0.2.5",
   "description": "Collection of needed tools for web project",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -59,9 +59,8 @@
   "peerDependencies": {},
   "dependencies": {
     "chalk": "4",
-    "idb-keyval": "^6.2.1",
+    "level": "^8.0.0",
     "lru-cache": "^10.0.1",
-    "node-localstorage": "^3.0.5",
     "queue-typed": "^1.33.6"
   }
 }

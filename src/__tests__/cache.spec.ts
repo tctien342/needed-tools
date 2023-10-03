@@ -8,7 +8,7 @@ describe('CacheManager', () => {
   });
 
   it('should set and get cache data', async () => {
-    const data = { age: 30, name: 'John' };
+    const data = { age: 30, name: 'John', tl: 5000 };
     const key = 'user';
     await cacheManager.set({ data, key });
     const cachedData = await cacheManager.get<typeof data>({ key });

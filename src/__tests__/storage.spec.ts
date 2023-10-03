@@ -10,8 +10,8 @@ describe('StorageManager', () => {
 
   describe('set&get', () => {
     it('should set an item in storageManager', async () => {
-      await storageManager.set('key', testValue);
-      expect(await storageManager.get('key')).toStrictEqual(testValue);
+      await storageManager.set('key123', testValue);
+      expect(await storageManager.get('key123')).toStrictEqual(testValue);
     });
     it('should return null if the item does not exist', async () => {
       expect(await storageManager.get('123asd')).toBeUndefined();

@@ -1,4 +1,4 @@
-import { Level } from 'level';
+import { kvsEnvStorage } from '@kvs/env';
 import { LRUCache } from 'lru-cache';
 
 import { Logger } from './log';
@@ -8,12 +8,12 @@ class StorageManager<T extends object> {
   log: Logger;
   store:
     | {
-        store: LRUCache<string, T, unknown>;
-        type: 'ram';
+        store: Awaited<ReturnType<typeof kvsEnvStorage<{ [key: string]: T }>>>;
+        type: 'local';
       }
     | {
-        store: Level<string, T>;
-        type: 'local';
+        store: LRUCache<string, T, unknown>;
+        type: 'ram';
       };
   storeName: string;
 
@@ -45,10 +45,12 @@ class StorageManager<T extends object> {
   private async createStore(): Promise<void> {
     try {
       this.store = {
-        store: new Level<string, T>(`./.tmp-storage/${this.storeName}`, { valueEncoding: 'json' }),
+        store: await kvsEnvStorage<{ [key: string]: T }>({
+          name: this.storeName,
+          version: 1,
+        }),
         type: 'local',
       };
-      await this.store.store.open();
       this.loadStatus = 'loaded';
       this.log.i('createStore', 'IDB not supported, fallback to local storage');
       return;
@@ -69,10 +71,11 @@ class StorageManager<T extends object> {
   async entries(): Promise<[string, T][]> {
     if (this.loadStatus !== 'loaded') await this.waitForLoad();
     if (this.store.type === 'local') {
-      return this.store.store
-        .iterator({})
-        .all()
-        .then((items) => items.map((item) => [item[0], item[1] as T]));
+      const result = [];
+      for await (const [key, value] of this.store.store) {
+        result.push([key, value]);
+      }
+      return result as [string, T][];
     }
     return this.store.store.dump().map((item) => [item[0], item[1].value]);
   }
@@ -88,7 +91,7 @@ class StorageManager<T extends object> {
   async getMany(keys: string[]): Promise<(T | undefined)[]> {
     if (this.loadStatus !== 'loaded') await this.waitForLoad();
     if (this.store.type === 'local') {
-      return this.store.store.getMany(keys);
+      return Promise.all(keys.map((key) => this.store.store.get(key)));
     }
     return Promise.all(keys.map((key) => (this.store.store as LRUCache<string, T, unknown>).get(key)));
   }
@@ -96,7 +99,8 @@ class StorageManager<T extends object> {
   async remove(key: string): Promise<void> {
     if (this.loadStatus !== 'loaded') await this.waitForLoad();
     if (this.store.type === 'local') {
-      return this.store.store.del(key);
+      await this.store.store.delete(key);
+      return;
     }
     this.store.store.delete(key);
   }
@@ -104,7 +108,8 @@ class StorageManager<T extends object> {
   async set(key: string, value: T) {
     if (this.loadStatus !== 'loaded') await this.waitForLoad();
     if (this.store.type === 'local') {
-      return this.store.store.put(key, value);
+      await this.store.store.set(key, value);
+      return;
     }
     this.store.store.set(key, value);
   }
@@ -112,13 +117,8 @@ class StorageManager<T extends object> {
   async setMany(data: [string, T][]) {
     if (this.loadStatus !== 'loaded') await this.waitForLoad();
     if (this.store.type === 'local') {
-      return this.store.store.batch(
-        data.map(([key, value]) => ({
-          key,
-          type: 'put',
-          value,
-        })),
-      );
+      await Promise.all(data.map(([key, value]) => this.store.store.set(key, value)));
+      return;
     }
     data.forEach(([key, value]) => {
       (this.store.store as LRUCache<string, T, unknown>).set(key, value);

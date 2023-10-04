@@ -1,6 +1,6 @@
 {
   "name": "@saintno/needed-tools",
-  "version": "0.2.5",
+  "version": "0.2.8",
   "description": "Collection of needed tools for web project",
   "main": "build/index.js",
   "typings": "build/index.d.ts",
@@ -58,8 +58,8 @@
   ],
   "peerDependencies": {},
   "dependencies": {
+    "@kvs/env": "^2.1.5",
     "chalk": "4",
-    "level": "^8.0.0",
     "lru-cache": "^10.0.1",
     "queue-typed": "^1.33.6"
   }

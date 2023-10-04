@@ -27,3 +27,4 @@ launch.json
 .eslintcache
 .idea
 .tmp-storage
+.cache

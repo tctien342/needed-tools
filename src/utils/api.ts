@@ -8,10 +8,10 @@ let APIHook = {
   beforeCall: (url: string, config: RequestInit) => {
     return { config, url };
   },
-  beforeReturn: (data: any) => {
+  beforeReturn: (data: any, _config: RequestInit) => {
     return data;
   },
-  onError: (error: Response) => {
+  onError: (error: Response, _config: RequestInit): any => {
     throw error;
   },
 };
@@ -36,10 +36,10 @@ function tFetch<TResponse>(
         if (response.ok) return response.json();
         throw response;
       })
-      .then((data) => APIHook.beforeReturn(data))
+      .then((data) => APIHook.beforeReturn(data, newConfig))
       // If something went wrong, we catch an error
       // and throw it again to stop the execution.
-      .catch((error) => APIHook.onError(error as Response))
+      .catch((error) => APIHook.onError(error as Response, newConfig))
   );
 }
 

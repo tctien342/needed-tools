@@ -52,7 +52,7 @@ class StorageManager<T extends object> {
         type: 'local',
       };
       this.loadStatus = 'loaded';
-      this.log.i('createStore', 'IDB not supported, fallback to local storage');
+      this.log.i('createStore', 'Storage initialized successfully');
       return;
     } catch (e) {
       // Fall back to ram cache

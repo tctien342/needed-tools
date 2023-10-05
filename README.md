@@ -53,7 +53,7 @@ import { Logger } from '@saintno/needed-tools';
 // Logger need `name` of object that log belongs to
 // Logger(object_name, activated?, config_override?)
 const MainScreenLogger = new Logger('MainScreen');
-// For type of loging:
+// For type of login:
 // i: Info: For some output of function or data's contents
 // w: Warning: Something wrong happen but your app still work as normal
 // b: Bug: Critical error happen and will stop your app
@@ -77,7 +77,7 @@ MainScreenLogger.setBugFallback(({fnName, fnMessage, fnData}) => {
 
 #### QueueManager
 
-Make an queue into your code, init an queue and pushing job into it, the queue will do the job in queue each time you call `add`, all the job in queue will be trigger parralel with max worker by `max_job`
+Make an queue into your code, init an queue and pushing job into it, the queue will do the job in queue each time you call `add`, all the job in queue will be trigger parallel with max worker by `max_job`
 
 ```ts
 import { QueueManager } from '@saintno/needed-tools';
@@ -111,15 +111,17 @@ MainCache.set({
   key: 'DATA_2022',
   data: [{ name: '1' }, { name: '2' }],
   tl: CacheManager.TIME['5min'], // Caching in 5min
-  tags: ['DATA'], // Will be auto matic detele if call clean by tag
+  tags: ['DATA'], // Will be auto matic delete if call clean by tag
+  onStorage: false, // False will store on ram
 });
 
 // Get some cache with `get` and fallback into generator
 const data = await MainCache.get({
   key: 'DATA_2022',
   tl: CacheManager.TIME['5min'], // Caching in 5min
-  tags: ['DATA_2'], // Will be auto matic detele if call clean by tag
+  tags: ['DATA_2'], // Will be auto matic delete if call clean by tag
   generator: async () => [{ name: '1' }, { name: '2' }], // If cache not found => call generator => set new cache => return data from generator
+  onStorage: false, // False will store on ram if generator return data
 });
 
 // Clear all cache with tag
@@ -154,9 +156,17 @@ const data = new APIQueueItem('https://google.com.vn')
 // Post method, high priority
 new APIQueueItem(`https://google.com.vn/${id}`).high().post({ name: 'SaintNo' });
 
-// Default APIQueueItem will use fetch instance, if you want customize that instance, create an fetch instance by your self then bind it:
-const fetchInstance = fetch.create(); // Create your instance
-APIQueueItem.setApiInstance(fetchInstance); // Bind it
+// Default APIQueueItem will use fetch instance, if you want customize that instance, using hooks:
+APIQueueItem.setHook({
+  beforeCall: (url: string, config: RequestInit) => {
+    return { config, url };
+  },
+  beforeReturn: (data: any, _config: RequestInit) => {
+    return data;
+  },
+  onError: (error: Response, _config: RequestInit): any => {
+    throw error;
+  },
 ```
 
 #### Other `Tools`
@@ -185,9 +195,12 @@ const offset = {
 
 ### Technologies
 
-- Typescript
-- Jest
-- Rollup
+- Typescript : Language
+- BunJS : Bundler
+- @kvs/env : Storage
+- chalk : Colorful console
+- lru-cache : Ram Cache
+- queue-typed : API queue
 
 ### Maintainer
 

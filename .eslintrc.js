@@ -25,10 +25,12 @@ module.exports = {
   root: true,
   rules: {
     '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-unused-vars': [1, { argsIgnorePattern: '^_', vars: 'all' }],
     'arrow-body-style': 'off',
     'import/first': 'error',
     'import/newline-after-import': 'error',
     'import/no-duplicates': 'error',
+    'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'prefer-arrow-callback': 'off',
     'prettier/prettier': 'error',
   },

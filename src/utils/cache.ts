@@ -45,12 +45,12 @@ class CacheManager {
    * Clean current cache
    */
   public async clean(opts?: { tag?: string; tags?: string[] }): Promise<void> {
-    if (!this.ramCache.isAvailable || !this.activated) return;
+    if (!this.activated) return;
 
     this.debug.i('clean', 'Triggered with option', opts);
 
     /**
-     * Clear IDB Cache
+     * Clear Data
      */
     const storageData: [string, ICachedData][] = await this.storeCache.entries();
     const ramData: [string, ICachedData][] = await this.ramCache.entries();
@@ -83,11 +83,11 @@ class CacheManager {
    * Remove all cache
    */
   public clear(): void {
-    if (!this.ramCache.isAvailable || !this.activated) return;
+    if (!this.activated) return;
 
     this.debug.i('clear', 'Triggered');
     /**
-     * Clear IDB Cache
+     * Clear Storage Cache
      */
     this.storeCache.clear();
     /**
@@ -116,7 +116,7 @@ class CacheManager {
   public async get<T = unknown>({
     generator,
     key,
-    onStorage = true,
+    onStorage = false,
     tags = [],
     tl = DEFAULT_CACHE_TIME,
   }: {
@@ -141,7 +141,7 @@ class CacheManager {
      */
     tl?: keyof typeof CACHE_TIME_TEMPLATE | number;
   }): Promise<T | null> {
-    if (!this.ramCache.isAvailable || !this.activated) return generator?.() || null;
+    if (!this.activated) return generator?.() || null;
 
     /**
      * Checking if cache is available

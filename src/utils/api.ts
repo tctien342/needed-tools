@@ -2,16 +2,18 @@
 import { CacheManager } from '@utils/cache';
 import { QueueManager } from '@utils/queue';
 
+type RequestInitWithTimeout = RequestInit & { timeout?: number };
+
 const ApiCache = new CacheManager('API');
 
 let APIHook = {
-  beforeCall: (url: string, config: RequestInit) => {
+  beforeCall: (url: string, config: RequestInitWithTimeout) => {
     return { config, url };
   },
-  beforeReturn: (data: any, _config: RequestInit) => {
+  beforeReturn: (data: any, _config: RequestInitWithTimeout) => {
     return data;
   },
-  onError: (error: Response, _config: RequestInit): any => {
+  onError: (error: Response, _config: RequestInitWithTimeout): any => {
     throw error;
   },
 };
@@ -22,13 +24,20 @@ function tFetch<TResponse>(
   url: string,
   // `RequestInit` is a type for configuring
   // a `fetch` request. By default, an empty object.
-  config: RequestInit = {},
+  config: RequestInitWithTimeout = {},
 
   // This function is async, it will return a Promise:
 ): Promise<TResponse> {
   // Inside, we call the `fetch` function with
   // a URL and config given:
   const { config: newConfig, url: newUrl } = APIHook.beforeCall(url, config);
+
+  // If we have a timeout, we set up a timeout:
+  if (config.timeout) {
+    const signal = AbortSignal.timeout(config.timeout);
+    newConfig.signal = signal;
+  }
+
   return (
     fetch(newUrl, newConfig)
       // When got a response call a `json` method on it
@@ -77,7 +86,7 @@ class APIQueueItem {
     this.url = url;
   }
 
-  private async update<T = unknown>(method: 'patch' | 'post' | 'put', data: any, config?: RequestInit) {
+  private async update<T = unknown>(method: 'patch' | 'post' | 'put', data: any, config?: RequestInitWithTimeout) {
     /*
      * Clear all it dependencys
      */
@@ -117,7 +126,7 @@ class APIQueueItem {
   /**
    * Call DELETE method
    */
-  async delete<T = unknown>(config?: RequestInit) {
+  async delete<T = unknown>(config?: RequestInitWithTimeout) {
     /*
      * Clear all it dependencys
      */
@@ -147,7 +156,7 @@ class APIQueueItem {
   /**
    * Call GET method
    */
-  async get<T = unknown>(config?: RequestInit) {
+  async get<T = unknown>(config?: RequestInitWithTimeout) {
     /**
      * Clear all it dependency
      */
@@ -212,21 +221,21 @@ class APIQueueItem {
   /**
    * Call PATCH method
    */
-  async patch<T = unknown>(data: any, config?: RequestInit) {
+  async patch<T = unknown>(data: any, config?: RequestInitWithTimeout) {
     return this.update<T>('patch', data, config);
   }
 
   /**
    * Call POST method
    */
-  async post<T = unknown>(data: any, config?: RequestInit) {
+  async post<T = unknown>(data: any, config?: RequestInitWithTimeout) {
     return this.update<T>('post', data, config);
   }
 
   /**
    * Call PUT method
    */
-  async put<T = unknown>(data: any, config?: RequestInit) {
+  async put<T = unknown>(data: any, config?: RequestInitWithTimeout) {
     return this.update<T>('put', data, config);
   }
 

@@ -39,4 +39,14 @@ describe('Test APIQueue class', () => {
     expect(beforeCall).toEqual(true);
     expect(data).toEqual('test');
   });
+
+  test('API should be timeout', async () => {
+    try {
+      await new APIQueueItem('https://jsonplaceholder.typicode.com/todos/1').get({
+        timeout: 1,
+      });
+    } catch (e) {
+      expect(e.message).toEqual('The operation timed out.');
+    }
+  });
 });

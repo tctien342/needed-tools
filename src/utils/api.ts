@@ -13,8 +13,11 @@ let APIHook = {
   beforeReturn: (data: any, _config: RequestInitWithTimeout) => {
     return data;
   },
-  onError: (error: Response, _config: RequestInitWithTimeout): any => {
+  onError: (error: Response, _config: RequestInitWithTimeout) => {
     throw error;
+  },
+  onParse: (res: Response) => {
+    return res.json();
   },
 };
 
@@ -25,8 +28,8 @@ function tFetch<TResponse>(
   // `RequestInit` is a type for configuring
   // a `fetch` request. By default, an empty object.
   config: RequestInitWithTimeout = {},
-
-  // This function is async, it will return a Promise:
+  // Override default parse
+  onParse?: (res: Response) => Promise<TResponse>,
 ): Promise<TResponse> {
   // Inside, we call the `fetch` function with
   // a URL and config given:
@@ -42,7 +45,10 @@ function tFetch<TResponse>(
     fetch(newUrl, newConfig)
       // When got a response call a `json` method on it
       .then((response) => {
-        if (response.ok) return response.json();
+        if (response.ok) {
+          if (onParse) return onParse(response);
+          return APIHook.onParse(response);
+        }
         throw response;
       })
       .then((data) => APIHook.beforeReturn(data, newConfig))
@@ -53,6 +59,10 @@ function tFetch<TResponse>(
 }
 
 class APIQueueItem {
+  /**
+   * Current API cache manager instance
+   */
+  static getCacheInstance = () => ApiCache;
   /**
    * Get current API queue manager instance
    */
@@ -75,6 +85,8 @@ class APIQueueItem {
    */
   private mode: 'high' | 'low' | 'now' = 'low';
 
+  private parseMode: 'default' | 'json' | 'text' = 'default';
+
   private storageType: 'local' | 'ram' = 'ram';
 
   /**
@@ -84,6 +96,17 @@ class APIQueueItem {
 
   constructor(url: string) {
     this.url = url;
+  }
+
+  private getParsedMethod() {
+    switch (this.parseMode) {
+      case 'json':
+        return (res: Response) => res.json();
+      case 'text':
+        return (res: Response) => res.text();
+      default:
+        return undefined;
+    }
   }
 
   private async update<T = unknown>(method: 'patch' | 'post' | 'put', data: any, config?: RequestInitWithTimeout) {
@@ -97,20 +120,28 @@ class APIQueueItem {
      * API need process instantly
      */
     if (this.mode === 'now')
-      return tFetch<T>(this.url, {
-        body: JSON.stringify(data),
-        method: method.toUpperCase(),
-        ...config,
-      });
+      return tFetch<T>(
+        this.url,
+        {
+          body: JSON.stringify(data),
+          method: method.toUpperCase(),
+          ...config,
+        },
+        this.getParsedMethod(),
+      );
     /**
      * Add into queue
      */
     return ApiQueue.wait(async () => {
-      const result = await tFetch<T>(this.url, {
-        body: JSON.stringify(data),
-        method: method.toUpperCase(),
-        ...config,
-      });
+      const result = await tFetch<T>(
+        this.url,
+        {
+          body: JSON.stringify(data),
+          method: method.toUpperCase(),
+          ...config,
+        },
+        this.getParsedMethod(),
+      );
       return result;
     }, this.mode === 'high');
   }
@@ -137,19 +168,27 @@ class APIQueueItem {
      * API need process instantly
      */
     if (this.mode === 'now') {
-      return tFetch<T>(this.url, {
-        method: 'DELETE',
-        ...config,
-      });
+      return tFetch<T>(
+        this.url,
+        {
+          method: 'DELETE',
+          ...config,
+        },
+        this.getParsedMethod(),
+      );
     }
     /**
      * Add into queue
      */
     return ApiQueue.wait(async () => {
-      const result = await tFetch<T>(this.url, {
-        method: 'DELETE',
-        ...config,
-      });
+      const result = await tFetch<T>(
+        this.url,
+        {
+          method: 'DELETE',
+          ...config,
+        },
+        this.getParsedMethod(),
+      );
       return result;
     }, this.mode === 'high');
   }
@@ -166,10 +205,14 @@ class APIQueueItem {
       }
       try {
         const call = async () => {
-          const data = await tFetch<T>(this.url, {
-            method: 'GET',
-            ...config,
-          });
+          const data = await tFetch<T>(
+            this.url,
+            {
+              method: 'GET',
+              ...config,
+            },
+            this.getParsedMethod(),
+          );
           return data;
         };
         /**
@@ -210,6 +253,11 @@ class APIQueueItem {
     return this;
   }
 
+  json() {
+    this.parseMode = 'json';
+    return this;
+  }
+
   /**
    * Set this to instantly API
    */
@@ -244,6 +292,11 @@ class APIQueueItem {
    */
   storage() {
     this.storageType = 'local';
+    return this;
+  }
+
+  text() {
+    this.parseMode = 'text';
     return this;
   }
 }

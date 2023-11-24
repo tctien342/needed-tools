@@ -17,6 +17,10 @@ describe('Test APIQueue class', () => {
       userId: 1,
     });
   });
+  test('API should return text instead of json', async () => {
+    const data = await new APIQueueItem('https://jsonplaceholder.typicode.com/todos/1').text().get();
+    expect(typeof data).toEqual('string');
+  });
   test('Should be cached correctly', async () => {
     const start = Date.now();
     await api();

@@ -111,7 +111,7 @@ class APIQueueItem {
 
   private async update<T = unknown>(method: 'patch' | 'post' | 'put', data: any, config?: RequestInitWithTimeout) {
     let bodyData: any;
-    if (data instanceof FormData) {
+    if (data instanceof FormData || typeof data === 'string') {
       bodyData = data;
     } else {
       bodyData = JSON.stringify(data);

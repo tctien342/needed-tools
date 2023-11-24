@@ -110,6 +110,12 @@ class APIQueueItem {
   }
 
   private async update<T = unknown>(method: 'patch' | 'post' | 'put', data: any, config?: RequestInitWithTimeout) {
+    let bodyData: any;
+    if (data instanceof FormData) {
+      bodyData = data;
+    } else {
+      bodyData = JSON.stringify(data);
+    }
     /*
      * Clear all it dependencys
      */
@@ -123,7 +129,7 @@ class APIQueueItem {
       return tFetch<T>(
         this.url,
         {
-          body: JSON.stringify(data),
+          body: bodyData,
           method: method.toUpperCase(),
           ...config,
         },
@@ -136,7 +142,7 @@ class APIQueueItem {
       const result = await tFetch<T>(
         this.url,
         {
-          body: JSON.stringify(data),
+          body: bodyData,
           method: method.toUpperCase(),
           ...config,
         },

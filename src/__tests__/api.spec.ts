@@ -31,17 +31,23 @@ describe('Test APIQueue class', () => {
   test('API hook should work', async () => {
     let beforeCall = false;
     APIQueueItem.setHook({
-      beforeCall: (url, config) => {
+      beforeCall: async (url, config) => {
         beforeCall = true;
         return { config, url };
       },
-      beforeReturn: () => {
+      beforeReturn: async () => {
         return 'test';
+      },
+      onError: async (_error) => {
+        return true;
       },
     });
     const data = await new APIQueueItem('https://jsonplaceholder.typicode.com/todos/1').get();
     expect(beforeCall).toEqual(true);
     expect(data).toEqual('test');
+    // Expect error return true
+    const error = await new APIQueueItem('https://jsonplaceholder.typicode.com/todos/-1').get();
+    expect(error).toEqual(true);
   });
 
   test('API should be timeout', async () => {

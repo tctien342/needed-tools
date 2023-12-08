@@ -7,23 +7,23 @@ type RequestInitWithTimeout = RequestInit & { timeout?: number };
 const ApiCache = new CacheManager('API');
 
 let APIHook = {
-  beforeCall: (url: string, config: RequestInitWithTimeout) => {
+  beforeCall: async (url: string, config: RequestInitWithTimeout) => {
     return { config, url };
   },
-  beforeReturn: (data: any, _config: RequestInitWithTimeout) => {
+  beforeReturn: async (data: any, _config: RequestInitWithTimeout) => {
     return data;
   },
-  onError: (error: Response, _config: RequestInitWithTimeout) => {
+  onError: async (error: Response, _config: RequestInitWithTimeout): Promise<any> => {
     throw error;
   },
-  onParse: (res: Response) => {
+  onParse: async (res: Response): Promise<any> => {
     return res.json();
   },
 };
 
 const ApiQueue = new QueueManager('APIQueue');
 
-function tFetch<TResponse>(
+async function tFetch<TResponse>(
   url: string,
   // `RequestInit` is a type for configuring
   // a `fetch` request. By default, an empty object.
@@ -33,7 +33,7 @@ function tFetch<TResponse>(
 ): Promise<TResponse> {
   // Inside, we call the `fetch` function with
   // a URL and config given:
-  const { config: newConfig, url: newUrl } = APIHook.beforeCall(url, config);
+  const { config: newConfig, url: newUrl } = await APIHook.beforeCall(url, config);
 
   // If we have a timeout, we set up a timeout:
   if (config.timeout) {

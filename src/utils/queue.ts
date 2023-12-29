@@ -30,32 +30,10 @@ class QueueManager {
     this.processing = 0;
     this.maxProcessing = maxProcessing;
     this.debug = new Logger(name, log);
+    return this;
   }
 
-  /**
-   * Add and job into queue
-   */
-  add(job: TQueueJob, high = false) {
-    if (high) {
-      this.queue.unshift(job);
-    } else {
-      this.queue.enqueue(job);
-    }
-    void this.work();
-  }
-
-  /**
-   * Add job into queue then wait for it to be done
-   */
-  wait<T = unknown>(job: () => Promise<T>, high = false) {
-    return new Promise((rs: (data: Awaited<ReturnType<typeof job>>) => void, rj) => {
-      this.add(() => {
-        job().then(rs).catch(rj);
-      }, high);
-    });
-  }
-
-  async work() {
+  private async work() {
     if (!this.queue.isEmpty() && this.processing < this.maxProcessing) {
       this.debug.i('work', 'Found job available, working on it', {
         availableThread: this.maxProcessing - this.processing,
@@ -73,6 +51,39 @@ class QueueManager {
         void this.work();
       }
     }
+  }
+
+  /**
+   * Add and job into queue
+   */
+  add(job: TQueueJob, high = false) {
+    if (high) {
+      this.queue.unshift(job);
+    } else {
+      this.queue.enqueue(job);
+    }
+    void this.work();
+    return this;
+  }
+
+  /**
+   * Clear all job and queue
+   */
+  clear() {
+    this.queue.clear();
+    this.processing = 0;
+    return this;
+  }
+
+  /**
+   * Add job into queue then wait for it to be done
+   */
+  wait<T = unknown>(job: () => Promise<T>, high = false) {
+    return new Promise((rs: (data: Awaited<ReturnType<typeof job>>) => void, rj) => {
+      this.add(() => {
+        job().then(rs).catch(rj);
+      }, high);
+    });
   }
 }
 

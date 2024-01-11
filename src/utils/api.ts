@@ -2,61 +2,14 @@
 import { CacheManager } from '@utils/cache';
 import { QueueManager } from '@utils/queue';
 
+import { CustomFetch } from './fetch';
+
 type RequestInitWithTimeout = RequestInit & { timeout?: number };
 
 const ApiCache = new CacheManager('API');
 
-let APIHook = {
-  beforeCall: async (url: string, config: RequestInitWithTimeout) => {
-    return { config, url };
-  },
-  beforeReturn: async (data: any, _config: RequestInitWithTimeout) => {
-    return data;
-  },
-  onError: async (error: Response, _config: RequestInitWithTimeout): Promise<any> => {
-    throw error;
-  },
-  onParse: async (res: Response): Promise<any> => {
-    return res.json();
-  },
-};
-
+const tFetch = new CustomFetch();
 const ApiQueue = new QueueManager('APIQueue');
-
-async function tFetch<TResponse>(
-  url: string,
-  // `RequestInit` is a type for configuring
-  // a `fetch` request. By default, an empty object.
-  config: RequestInitWithTimeout = {},
-  // Override default parse
-  onParse?: (res: Response) => Promise<TResponse>,
-): Promise<TResponse> {
-  // Inside, we call the `fetch` function with
-  // a URL and config given:
-  const { config: newConfig, url: newUrl } = await APIHook.beforeCall(url, config);
-
-  // If we have a timeout, we set up a timeout:
-  if (config.timeout) {
-    const signal = AbortSignal.timeout(config.timeout);
-    newConfig.signal = signal;
-  }
-
-  return (
-    fetch(newUrl, newConfig)
-      // When got a response call a `json` method on it
-      .then((response) => {
-        if (response.ok) {
-          if (onParse) return onParse(response);
-          return APIHook.onParse(response);
-        }
-        throw response;
-      })
-      .then((data) => APIHook.beforeReturn(data, newConfig))
-      // If something went wrong, we catch an error
-      // and throw it again to stop the execution.
-      .catch((error) => APIHook.onError(error as Response, newConfig))
-  );
-}
 
 class APIQueueItem {
   /**
@@ -67,18 +20,18 @@ class APIQueueItem {
    * Get current API queue manager instance
    */
   static getQueueInstance = () => ApiQueue;
-
   /**
-   * API hook setting
+   * Global fetch's hook setting
    */
-  static setHook = (hook: Partial<typeof APIHook>) => {
-    APIHook = { ...APIHook, ...hook };
-  };
+  static setHook = tFetch.overrideHooks;
 
   /**
    * Cache setting of this API
    */
   private cacheConfig: { deps?: string[]; tags?: string[]; tl: number } | null = null;
+
+  // Default is global fetch instance
+  private caller = tFetch;
 
   /**
    * Queue mode of this API, defualt is low priority
@@ -96,6 +49,15 @@ class APIQueueItem {
 
   constructor(url: string) {
     this.url = url;
+  }
+
+  static createInstance(caller: CustomFetch): typeof APIQueueItem {
+    return class APIInstance extends APIQueueItem {
+      constructor(url: string) {
+        super(url);
+        this.caller = caller;
+      }
+    };
   }
 
   private getParsedMethod() {
@@ -126,7 +88,7 @@ class APIQueueItem {
      * API need process instantly
      */
     if (this.mode === 'now')
-      return tFetch<T>(
+      return this.caller.call<T>(
         this.url,
         {
           body: bodyData,
@@ -139,7 +101,7 @@ class APIQueueItem {
      * Add into queue
      */
     return ApiQueue.wait(async () => {
-      const result = await tFetch<T>(
+      const result = await this.caller.call<T>(
         this.url,
         {
           body: bodyData,
@@ -174,7 +136,7 @@ class APIQueueItem {
      * API need process instantly
      */
     if (this.mode === 'now') {
-      return tFetch<T>(
+      return this.caller.call<T>(
         this.url,
         {
           method: 'DELETE',
@@ -187,7 +149,7 @@ class APIQueueItem {
      * Add into queue
      */
     return ApiQueue.wait(async () => {
-      const result = await tFetch<T>(
+      const result = await this.caller.call<T>(
         this.url,
         {
           method: 'DELETE',
@@ -198,6 +160,7 @@ class APIQueueItem {
       return result;
     }, this.mode === 'high');
   }
+
   /**
    * Call GET method
    */
@@ -211,7 +174,7 @@ class APIQueueItem {
       }
       try {
         const call = async () => {
-          const data = await tFetch<T>(
+          const data = await this.caller.call<T>(
             this.url,
             {
               method: 'GET',
@@ -250,7 +213,6 @@ class APIQueueItem {
     }
     return getData();
   }
-
   /**
    * Set this API to high priority
    */
@@ -291,6 +253,11 @@ class APIQueueItem {
    */
   async put<T = unknown>(data: any, config?: RequestInitWithTimeout) {
     return this.update<T>('put', data, config);
+  }
+
+  public setCaller(caller: CustomFetch) {
+    this.caller = caller;
+    return this;
   }
 
   /**

@@ -1,4 +1,5 @@
 import { APIQueueItem } from '@utils/api';
+import { CustomFetch } from '@utils/fetch';
 
 describe('Test APIQueue class', () => {
   const api = () =>
@@ -48,6 +49,29 @@ describe('Test APIQueue class', () => {
     // Expect error return true
     const error = await new APIQueueItem('https://jsonplaceholder.typicode.com/todos/-1').get();
     expect(error).toEqual(true);
+  });
+
+  test('Custom caller should work', async () => {
+    let flag = false;
+    const caller = new CustomFetch();
+    caller.setBeforeReturn(async (data) => {
+      flag = true;
+      return data;
+    });
+    await new APIQueueItem('https://jsonplaceholder.typicode.com/todos/1').setCaller(caller).get();
+    expect(flag).toEqual(true);
+  });
+
+  test('Custom instance should work', async () => {
+    let flag = false;
+    const caller = new CustomFetch();
+    caller.setBeforeReturn(async (data) => {
+      flag = true;
+      return data;
+    });
+    const CustomInstance = APIQueueItem.createInstance(caller);
+    await new CustomInstance('https://jsonplaceholder.typicode.com/todos/1').get();
+    expect(flag).toEqual(true);
   });
 
   test('API should be timeout', async () => {

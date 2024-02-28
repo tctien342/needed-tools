@@ -37,9 +37,9 @@ class QueueManager {
     if (!this.queue.isEmpty() && this.processing < this.maxProcessing) {
       this.debug.i('work', 'Found job available, working on it', {
         availableThread: this.maxProcessing - this.processing,
-        count: this.queue.length,
+        count: this.queue.size,
       });
-      const job = this.queue.dequeue();
+      const job = this.queue.shift();
       if (job) {
         this.processing++;
         try {
@@ -60,7 +60,7 @@ class QueueManager {
     if (high) {
       this.queue.unshift(job);
     } else {
-      this.queue.enqueue(job);
+      this.queue.push(job);
     }
     void this.work();
     return this;

@@ -78,4 +78,26 @@ describe('Test QueueManager class', () => {
 
     expect(jobB).not.toHaveBeenCalled();
   });
+
+  test('Should set the limit per second', () => {
+    const queue = new QueueManager('test-queue', 2, false);
+    const limit = 10;
+
+    queue.setLimitPerSecond(limit);
+
+    expect(queue.limitPerSecond).toBe(limit);
+  });
+  test('Jobs should be limited per second', async () => {
+    const job = jest.fn().mockResolvedValue('Job');
+
+    queue.maxProcessing = 10;
+    queue.setLimitPerSecond(2);
+    queue.add(job).add(job).add(job);
+
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for jobs to be processed
+
+    expect(job).toHaveBeenCalledTimes(2);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(job).toHaveBeenCalledTimes(3);
+  });
 });

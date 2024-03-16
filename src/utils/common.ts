@@ -60,8 +60,29 @@ const deepMerge = <T = unknown, S = unknown>(target: T, source: S): S & T => {
   return target as any;
 };
 
+const deepClone = <T = unknown>(item: T): T => {
+  if (!item) {
+    return item;
+  }
+  let result: any;
+  if (Array.isArray(item)) {
+    result = [];
+    for (const i in item) {
+      result[i] = deepClone(item[i]);
+    }
+  } else if (typeof item === 'object') {
+    result = {};
+    for (const i in item) {
+      result[i] = deepClone(item[i]);
+    }
+  } else {
+    result = item;
+  }
+  return result;
+};
+
 function isObject(item: any) {
   return item && typeof item === 'object' && !Array.isArray(item);
 }
 
-export { deepMerge, delay, joinIntoArray, whetherArray };
+export { deepClone, deepMerge, delay, joinIntoArray, whetherArray };

@@ -2,7 +2,7 @@ import { LOG_DEFAULT_CONF } from '@constants/log';
 import chalk from 'chalk';
 
 import { Browser } from './browser';
-import { deepMerge } from './common';
+import { deepClone, deepMerge } from './common';
 
 type TFallback = <T = unknown>(data: { fnData: T; fnMessage: string; fnName: string }) => void;
 
@@ -18,7 +18,7 @@ type TCustomLogFn = <T = unknown>(info: {
  */
 class Logger {
   activated: boolean;
-  config = LOG_DEFAULT_CONF;
+  config = deepClone(LOG_DEFAULT_CONF);
   customRender?: TCustomLogFn;
   fallback: TFallback | null;
   isBrowser = Browser.get().isBrowser();

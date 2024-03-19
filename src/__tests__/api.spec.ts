@@ -1,5 +1,6 @@
 import { APIQueueItem } from '@utils/api';
 import { CustomFetch } from '@utils/fetch';
+import { QueueManager } from '@utils/queue';
 
 describe('Test APIQueue class', () => {
   const api = () =>
@@ -82,5 +83,10 @@ describe('Test APIQueue class', () => {
     } catch (e) {
       expect(e.message).toEqual('The operation timed out.');
     }
+  });
+
+  test('Jobs should have another queue', async () => {
+    const APIInstance = APIQueueItem.createInstance(new CustomFetch(), new QueueManager('TEST', 111));
+    expect(new APIInstance('').getQueuer().maxProcessing).toEqual(111);
   });
 });

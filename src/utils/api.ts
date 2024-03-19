@@ -6,32 +6,34 @@ import { CustomFetch } from './fetch';
 
 type RequestInitWithTimeout = RequestInit & { timeout?: number };
 
-const ApiCache = new CacheManager('API');
-
-const tFetch = new CustomFetch();
-const ApiQueue = new QueueManager('APIQueue');
+const GlobalCacher = new CacheManager('GlobalAPI');
+const GlobalFetch = new CustomFetch();
+const GlobalApiQueue = new QueueManager('GlobalAPIQueue');
 
 class APIQueueItem {
   /**
    * Current API cache manager instance
    */
-  static getCacheInstance = () => ApiCache;
+  static getCacheInstance = () => GlobalCacher;
   /**
-   * Get current API queue manager instance
+   * Get global API queue manager instance
    */
-  static getQueueInstance = () => ApiQueue;
+  static getQueueInstance = () => GlobalApiQueue;
   /**
    * Global fetch's hook setting
    */
-  static setHook = tFetch.overrideHooks;
+  static setHook = GlobalFetch.overrideHooks;
 
   /**
    * Cache setting of this API
    */
   private cacheConfig: { deps?: string[]; tags?: string[]; tl: number } | null = null;
 
+  // Default is global cache instance
+  private cacher = GlobalCacher;
+
   // Default is global fetch instance
-  private caller = tFetch;
+  private caller = GlobalFetch;
 
   /**
    * Queue mode of this API, defualt is low priority
@@ -39,6 +41,9 @@ class APIQueueItem {
   private mode: 'high' | 'low' | 'now' = 'low';
 
   private parseMode: 'default' | 'json' | 'text' = 'default';
+
+  // Default is global queue instance
+  private queuer = GlobalApiQueue;
 
   private storageType: 'local' | 'ram' = 'ram';
 
@@ -51,11 +56,13 @@ class APIQueueItem {
     this.url = url;
   }
 
-  static createInstance(caller: CustomFetch): typeof APIQueueItem {
+  static createInstance(caller: CustomFetch, queuer?: QueueManager, cacher?: CacheManager): typeof APIQueueItem {
     return class APIInstance extends APIQueueItem {
       constructor(url: string) {
         super(url);
         this.caller = caller;
+        this.queuer = queuer || GlobalApiQueue;
+        this.cacher = cacher || GlobalCacher;
       }
     };
   }
@@ -82,7 +89,7 @@ class APIQueueItem {
      * Clear all it dependencys
      */
     if (this.cacheConfig?.deps) {
-      void ApiCache.clearByTags(this.cacheConfig?.deps);
+      void this.cacher.clearByTags(this.cacheConfig?.deps);
     }
     /**
      * API need process instantly
@@ -100,7 +107,7 @@ class APIQueueItem {
     /**
      * Add into queue
      */
-    return ApiQueue.wait(async () => {
+    return this.queuer.wait(async () => {
       const result = await this.caller.call<T>(
         this.url,
         {
@@ -130,7 +137,7 @@ class APIQueueItem {
      * Clear all it dependencys
      */
     if (this.cacheConfig?.deps) {
-      void ApiCache.clearByTags(this.cacheConfig?.deps);
+      void this.cacher.clearByTags(this.cacheConfig?.deps);
     }
     /**
      * API need process instantly
@@ -148,7 +155,7 @@ class APIQueueItem {
     /**
      * Add into queue
      */
-    return ApiQueue.wait(async () => {
+    return this.queuer.wait(async () => {
       const result = await this.caller.call<T>(
         this.url,
         {
@@ -170,7 +177,7 @@ class APIQueueItem {
      */
     const getData = async () => {
       if (this.cacheConfig?.deps) {
-        void ApiCache.clearByTags(this.cacheConfig?.deps);
+        void this.cacher.clearByTags(this.cacheConfig?.deps);
       }
       try {
         const call = async () => {
@@ -193,7 +200,7 @@ class APIQueueItem {
         /**
          * Add into queue
          */
-        const result = await ApiQueue.wait(async () => {
+        const result = await this.queuer.wait(async () => {
           return call();
         }, this.mode === 'high');
         return result;
@@ -202,7 +209,7 @@ class APIQueueItem {
       }
     };
     if (this.cacheConfig) {
-      const data = await ApiCache.get({
+      const data = await this.cacher.get({
         generator: getData,
         key: this.url,
         onStorage: this.storageType === 'local',
@@ -213,6 +220,19 @@ class APIQueueItem {
     }
     return getData();
   }
+
+  getCacher() {
+    return this.cacher;
+  }
+
+  getCaller() {
+    return this.caller;
+  }
+
+  getQueuer() {
+    return this.queuer;
+  }
+
   /**
    * Set this API to high priority
    */
@@ -274,4 +294,4 @@ class APIQueueItem {
   }
 }
 
-export { APIQueueItem, ApiCache };
+export { APIQueueItem, GlobalCacher as ApiCache };

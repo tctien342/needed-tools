@@ -6,9 +6,9 @@ import { CustomFetch } from './fetch';
 
 type RequestInitWithTimeout = RequestInit & { timeout?: number };
 
-const GlobalCacher = new CacheManager('GlobalAPI');
 const GlobalFetch = new CustomFetch();
-const GlobalApiQueue = new QueueManager('GlobalAPIQueue');
+const GlobalCacher = new CacheManager('GlobalAPI', true, false);
+const GlobalApiQueue = new QueueManager('GlobalAPIQueue', 4, false);
 
 class APIQueueItem {
   /**
